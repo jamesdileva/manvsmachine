@@ -131,7 +131,7 @@ Each sprint follows this template:
 
 **Backend Changes:**
 - Async SQLite connection (aiosqlite) using SQLAlchemy 2.0 + SQLModel, WAL mode and `PRAGMA foreign_keys=ON` enabled
-- Model definitions for all 14 tables (see §1.1 of Implementation Guide)
+- Model definitions for all 13 tables (see §1.1 of Implementation Guide)
 - `init_db()` function using Alembic
 - Connection lifecycle in FastAPI startup/shutdown events
 
@@ -140,14 +140,14 @@ Each sprint follows this template:
 **API Endpoints:** None.
 
 **Acceptance Criteria:**
-- `alembic upgrade head` creates all 14 tables
+- `alembic upgrade head` creates all 13 tables
 - All indexes are created
 - `init_db()` works without errors
 - `SQLModel.metadata.create_all(engine)` succeeds
 
 **Manual Testing:**
 1. Run `alembic upgrade head`
-2. Connect with `sqlite3 backend/manvsmachine.db`: `.tables` → see all 14 tables
+2. Connect with `sqlite3 backend/manvsmachine.db`: `.tables` → see all 13 tables (+ `alembic_version`)
 3. `SELECT name FROM sqlite_master WHERE type='index';` → see all indexes listed
 
 **Definition of Done:** All tables and indexes are created via Alembic migration, models match the schema in the Implementation Guide.
@@ -1495,6 +1495,7 @@ Sprint 1  (Scaffolding)
 
 | Date | Change |
 |------|--------|
+| 2026-09-28 | Sprint 2 complete: 13-table SQLModel schema + 18 indexes on SQLite (WAL, foreign keys per connection), Alembic `001` migration, DB init wired into the FastAPI lifespan; TDD green, ruff/mypy clean. Sprint text corrected from 14 to 13 tables (13 game tables + the `alembic_version` system table). |
 | 2026-09-28 | Sprint 1 complete: FastAPI + Vite scaffolding, TDD health check, pydantic settings, `scripts/dev.py` one-command local dev; ruff/mypy/tsc clean; no Docker. |
 | 2026-09-28 | Delivery model revised to a local-first web dashboard: Docker Compose removed (Sprints 1, 27), SQLite replaces PostgreSQL (Sprint 2), in-process state replaces Redis (Sprints 4, 14). Sprint order, game design, and AI fairness rules unchanged. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. |
 
