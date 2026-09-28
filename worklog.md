@@ -18,6 +18,14 @@ Entry template:
 
 ---
 
+## [2026-09-28] Sprint 1 — Project Scaffolding
+- Status: done
+- Plan & scope: local dev setup with no Docker, per `docs/03_Sprint_Plan.md` Sprint 1. FastAPI skeleton with `GET /` health check (TDD), CORS for localhost:5173, catch-all exception handler, pydantic settings (`DATABASE_URL`, AI keys). Vite + React + TS skeleton (6 files). `scripts/dev.py` one-command launcher (backend :8000 + frontend :5173). `pyproject.toml` includes FastAPI, Uvicorn, SQLModel, SQLAlchemy, aiosqlite, pytest, pytest-asyncio, ruff. Out of scope: DB models (Sprint 2), shadcn/Tailwind (Sprint 15), Redis (dropped). Planned files: `scripts/dev.py`, `backend/pyproject.toml`, `backend/app/__init__.py`, `backend/app/main.py`, `backend/requirements.txt`, `.python-version`, `frontend/package.json`, `frontend/tsconfig.json`, `frontend/vite.config.ts`, `frontend/index.html`, `frontend/src/main.tsx`, `frontend/src/app.tsx`.
+- Implemented: FastAPI app (`app/main.py`: health check, CORS, catch-all JSON 500 handler), pydantic settings (`app/core/config.py`: database_url, AI provider keys, `stub_provider_only`, CORS origins), `scripts/dev.py` (starts uvicorn + vite, propagates crashes, clean Ctrl+C shutdown), Vite + React + TS skeleton (strict mode), `.python-version` (3.14), root `.gitignore`.
+- Verification: TDD red→green (`tests/test_health.py`: ModuleNotFoundError before implementation, passes after; 1 passed, 95% coverage). `ruff check` clean on `app/` + `scripts/`. `mypy app/` clean (4 files). `npx tsc --noEmit` clean. Full-stack acceptance via `python scripts/dev.py`: `GET /` → `{"status":"ok"}`, `/docs` → 200, frontend serves the app (title "Man vs. Machine"). Servers stopped cleanly, ports freed.
+- Commits: `19385d2` Sprint 1: project scaffolding (FastAPI + Vite, local dev script); worklog + changelog in the follow-up commit.
+- Notes (flagged additions beyond the sprint file list): `backend/app/core/__init__.py` + `core/config.py` (Sprint 1's settings requirement needs them; Sprint 4 will extend rather than create config.py); `backend/tests/test_health.py` (TDD requirement); root `.gitignore` + committed `frontend/package-lock.json` (standard hygiene). Port note: 5173 is occupied on this machine by the owner's "FLOOD — Research Console" app while it runs, so Vite auto-increments to 5174 — backend CORS therefore allows 5173–5175. Environment: Python 3.14.3, Node 24.14.1. Known noise: StarletteDeprecationWarning from FastAPI's testclient import (third-party, harmless).
+
 ## [2026-09-28] Process setup — worklog & per-sprint loop
 - Status: done
 - Plan & scope: establish the per-sprint workflow (plan → scope → implement → verify → commit + push → worklog) and this journal. Files: `worklog.md`, `AGENTS.md`.

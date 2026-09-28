@@ -1495,6 +1495,7 @@ Sprint 1  (Scaffolding)
 
 | Date | Change |
 |------|--------|
+| 2026-09-28 | Sprint 1 complete: FastAPI + Vite scaffolding, TDD health check, pydantic settings, `scripts/dev.py` one-command local dev; ruff/mypy/tsc clean; no Docker. |
 | 2026-09-28 | Delivery model revised to a local-first web dashboard: Docker Compose removed (Sprints 1, 27), SQLite replaces PostgreSQL (Sprint 2), in-process state replaces Redis (Sprints 4, 14). Sprint order, game design, and AI fairness rules unchanged. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. |
 
 ---
