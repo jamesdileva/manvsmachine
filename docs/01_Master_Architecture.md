@@ -338,6 +338,7 @@ The MVP is complete when a user can:
 | SQLModel | 0.0.14+ | ORM models (sync layer for batch ops) |
 | SQLAlchemy | 2.0+ | Core async ORM for complex queries |
 | pydantic | 2.5+ | Data validation and serialization |
+| PyJWT | 2.8+ | JWT issuing/validation (auth) |
 | websockets | 12.0+ | WebSocket server for real-time voting |
 | pytest | 8.0+ | Backend testing |
 | uvicorn | 0.29+ | ASGI server |
@@ -1274,6 +1275,7 @@ These guidelines prevent architectural drift and ensure the web-first, micro-cha
 |---------|------|---------|
 | 1.0 | 2026-08-03 | Initial draft. Based on analysis of idea.md and idea2.md. Defines the micro-first, web-first, social-deduction architecture. |
 | 1.1 | 2026-09-28 | Delivery model changed to a local-first web dashboard: SQLite replaces PostgreSQL, in-process state replaces Redis, Docker Compose removed. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. Game rules, AI fairness constraints, and challenge engine unchanged. |
+| 1.2 | 2026-09-28 | Auth implementation details: PyJWT added to the backend stack (HS256 access tokens); users gained a nullable `password_hash` column (migration 002) for email/password accounts — hashing uses stdlib PBKDF2-HMAC-SHA256 (passlib is unmaintained and was never in §8). Added `GET /auth/me` protected endpoint. |
 
 ---
 

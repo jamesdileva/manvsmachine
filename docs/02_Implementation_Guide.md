@@ -84,9 +84,10 @@ def gen_uuid() -> str:
 
 class User(SQLModel, table=True):
     id: str = Field(default_factory=gen_uuid, primary_key=True)
-    guest_id: str | None = Field(default=None, unique=True, index=True)
+    guest_id: str | None = Field(default=None, unique=True)
     display_name: str
     email: str | None = None
+    password_hash: str | None = None  # set for registered accounts; guests stay None (added Sprint 4)
     detection_rating: float = Field(default=1000.0)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
@@ -301,6 +302,16 @@ Register a new account.
   {"email": "user@example.com", "password": "password", "display_name": "Alex"}
   ```
 - **Response (201):** Same as login.
+
+**GET `/auth/me`** *(protected — Bearer token)*
+
+Profile for the token holder.
+
+- **Response (200):**
+  ```json
+  {"user_id": "uuid", "guest_id": "uuid-or-null", "display_name": "Alex", "is_guest": false}
+  ```
+- **Errors:** 401 without/with an invalid token.
 
 ### 2.2 Challenges
 

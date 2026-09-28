@@ -1495,6 +1495,7 @@ Sprint 1  (Scaffolding)
 
 | Date | Change |
 |------|--------|
+| 2026-09-28 | Sprint 4 complete: JWT auth (PyJWT, HS256) with guest/login/register + protected `/auth/me`, stdlib PBKDF2 password hashing (passlib avoided — unmaintained, not in §8), in-process state store, custom exception handling; `users.password_hash` added via migration 002 (sprint said "no DB changes" but password login requires it); 25 tests green, ruff/mypy clean. |
 | 2026-09-28 | Sprint 3 complete: six repositories (users, challenges, sessions, voting, scoring, prompt audit) over the SQLite layer with graceful not-found handling, injectable-RNG A/B anonymization, and daily-score aggregation; TDD 18 green, ruff/mypy clean. |
 | 2026-09-28 | Sprint 2 complete: 13-table SQLModel schema + 18 indexes on SQLite (WAL, foreign keys per connection), Alembic `001` migration, DB init wired into the FastAPI lifespan; TDD green, ruff/mypy clean. Sprint text corrected from 14 to 13 tables (13 game tables + the `alembic_version` system table). |
 | 2026-09-28 | Sprint 1 complete: FastAPI + Vite scaffolding, TDD health check, pydantic settings, `scripts/dev.py` one-command local dev; ruff/mypy/tsc clean; no Docker. |
