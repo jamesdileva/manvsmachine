@@ -118,7 +118,7 @@ Every 15–60 seconds, the player goes through this cycle. The tension is not "c
 | **Constraint-based design** | Challenges are data-driven: prompt + constraints + time limit + input type + voting criteria + scoring rules. The engine interprets these; no hard-coded challenge logic. |
 | **AI as collaborative entry** | The AI is not an opponent to defeat. It is a co-author in the same challenge. The game tension comes from detection, not out-performance. |
 | **Fast feedback** | Immediate reveal, immediate scoring, immediate leaderboard update. No waiting. |
-| **Web-first** | The game runs in the browser. No downloads, no installs, no Steam. Cross-platform by default. |
+| **Web-first, local-first** | The game runs in the browser against a local server (localhost). No Docker, no installs, no Steam. A hosted deployment is a post-MVP option. |
 | **Provider-agnostic AI** | The AI layer supports multiple providers (OpenAI, Anthropic, local Ollama). The game logic never depends on a specific provider's output format or quality. |
 | **Transparent humanity** | Both human and AI entries are scored for "humanity" — how human-like they appear. This is surfaced to the player as a meta-metric. |
 
@@ -146,7 +146,7 @@ These are the "constitution" of Man vs. Machine. They must be upheld in every de
 3.  **No real-time multiplayer in MVP.** All MVP rounds are human-vs-AI. True multiplayer (2+ humans + voting) is post-MVP.
 4.  **No user-generated content in MVP.** The Micro Challenge Library is curated, not community-submitted.
 5.  **No monetization in MVP.** The MVP is completely free. Monetization strategy is documented but not implemented.
-6.  **Web-first, no desktop app.** The game runs in the browser. No Tauri/Electron/installed application.
+6.  **Web-first, no desktop app.** The game runs in the browser against a local backend server. No Tauri/Electron/installed application. No Docker required for development or play.
 7.  **AI providers are external services.** The system uses APIs (OpenAI, Anthropic, etc.). Local LLM support (Ollama) is a configuration option, not the primary path.
 8.  **The AI prompt must be auditable.** Every AI prompt used in a round is stored and versioned. System prompt modifications require a changelog entry.
 9.  **Prompt injection protection.** AI responses are validated/sanitized before presentation to players. No unfiltered LLM output reaches the UI.
@@ -194,7 +194,7 @@ These are the "constitution" of Man vs. Machine. They must be upheld in every de
 
 ## 5. Non-Goals
 
-- **Not a local-first application.** Unlike Nexus, all processing happens on remote servers. No SQLite-on-device.
+- **Not a hosted multi-user service in the MVP.** The game runs locally: the backend is a local FastAPI process with SQLite, and no Docker/Redis/Postgres are required. A hosted deployment (PostgreSQL, Redis, global daily challenge, shared leaderboards) is a post-MVP expansion (Appendix B).
 - **Not a general AI chat interface.** The AI is only used to generate challenge entries. No free-form chat.
 - **Not a content generation platform.** The game does not let users create challenges in the MVP.
 - **Not a social network.** There are no user profiles beyond a display name and stats. No friend lists, no messaging.
@@ -302,7 +302,7 @@ The MVP is complete when a user can:
 │  │        │                                                    │        │
 │  │        ▼                                                    │        │
 │  │  ┌──────────────────────────────────────┐                  │        │
-│  │  │          PostgreSQL Database         │                  │        │
+│  │  │            SQLite Database           │                  │        │
 │  │  │  users • challenges • rounds          │                  │        │
 │  │  │  ai_entries • scores • prompts        │                  │        │
 │  │  └──────────────────────────────────────┘                  │        │
@@ -334,12 +334,11 @@ The MVP is complete when a user can:
 |------------|---------|---------|
 | Python | 3.11+ | Runtime |
 | FastAPI | 0.110+ | REST API framework |
-| asyncpg | 0.29+ | PostgreSQL async driver |
+| aiosqlite | 0.20+ | SQLite async driver |
 | SQLModel | 0.0.14+ | ORM models (sync layer for batch ops) |
 | SQLAlchemy | 2.0+ | Core async ORM for complex queries |
 | pydantic | 2.5+ | Data validation and serialization |
 | websockets | 12.0+ | WebSocket server for real-time voting |
-| redis | 5.0+ (via redis-py) | Session state, WebSocket pub/sub |
 | pytest | 8.0+ | Backend testing |
 | uvicorn | 0.29+ | ASGI server |
 | httpx | 0.26+ | Async HTTP client for AI provider calls |
@@ -364,12 +363,10 @@ The MVP is complete when a user can:
 
 | Technology | Purpose |
 |------------|---------|
-| PostgreSQL | Primary database |
-| Redis | Session store, WebSocket pub/sub, rate limiting |
-| Docker Compose | Local development |
+| SQLite (WAL mode) | Primary database (local file) |
+| In-process state store | Ephemeral round/WebSocket state (replaces Redis) |
 | GitHub Actions | CI/CD |
-| Nginx | Reverse proxy, static file serving |
-| (Future) Kubernetes/ECS | Production deployment |
+| (Future, hosted) PostgreSQL + Redis + Nginx | Post-MVP hosted deployment |
 
 ### AI Providers
 
@@ -382,10 +379,10 @@ The MVP is complete when a user can:
 ### Why This Stack
 
 - **FastAPI**: Modern, type-safe, async-native, excellent auto-generated OpenAPI docs. Perfect for the mixed REST+WebSocket workload.
-- **PostgreSQL**: Rich types (JSONB for challenge definitions, arrays for constraint lists), excellent for the complex query patterns (leaderboards, humanity scoring aggregation, streak tracking).
+- **SQLite**: Zero-configuration local database; JSON columns hold challenge definitions and constraint lists; easily handles single-player write volumes; backup is copying one file. Schema and queries stay SQLAlchemy-portable so a future hosted deployment can move to PostgreSQL without service-layer changes.
 - **React + TypeScript**: Industry standard for web apps. TypeScript catches errors early in the voting/reveal UI which has complex state transitions.
 - **WebSockets**: Required for the real-time voting flow — the player must not be able to see the AI's response before voting, and the reveal must be synchronized.
-- **Redis**: Needed for session state (is this player in the voting phase?) and WebSocket pub/sub for real-time state broadcasts.
+- **In-process state store**: The MVP is single-player (one client per session), so ephemeral round state and WebSocket broadcasts live in the backend process. Redis becomes necessary only for a hosted multi-user deployment.
 
 ---
 
@@ -421,10 +418,10 @@ manVSmachine/
 │   │   │   ├── logging.py            # Logger setup
 │   │   │   ├── security.py           # JWT, password hashing
 │   │   │   ├── exceptions.py         # Custom exceptions
-│   │   │   └── redis.py              # Redis connection singleton
+│   │   │   └── state.py              # In-process ephemeral state (replaces Redis)
 │   │   ├── db/
 │   │   │   ├── __init__.py
-│   │   │   ├── connection.py         # Async PostgreSQL + sync for batch
+│   │   │   ├── connection.py         # Async SQLite (aiosqlite) + sync for batch
 │   │   │   ├── models.py             # SQLModel/SQLAlchemy table definitions
 │   │   │   └── migration.py          # Alembic migrations
 │   │   ├── schemas/                  # Pydantic schemas
@@ -476,7 +473,6 @@ manVSmachine/
 │   ├── scripts/
 │   │   ├── run.sh
 │   │   └── migrate.sh
-│   ├── Dockerfile
 │   ├── pyproject.toml
 │   └── requirements.txt
 ├── frontend/
@@ -538,8 +534,6 @@ manVSmachine/
 ├── scripts/
 │   ├── dev.py                           # Run backend + frontend + db in dev mode
 │   └── build.py                         # Build all artifacts
-├── docker-compose.yml                   # Postgres, Redis, backend, frontend
-├── Dockerfile.frontend                  # Multi-stage build
 ├── AGENTS.md
 ├── .python-version
 ├── pyproject.toml                       # Root pyproject (workspace)
@@ -571,7 +565,7 @@ manVSmachine/
 │  WebSocketManager, WebSocketHandlers                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                      Database Layer                             │
-│  PostgreSQL via SQLAlchemy + SQLModel                            │
+│  SQLite via SQLAlchemy + SQLModel (aiosqlite)                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -582,8 +576,8 @@ manVSmachine/
 | FastAPI App | `app/main.py` | Application factory, middleware, WebSocket setup, dependency injection |
 | API Routers | `app/api/v1/` | REST endpoints grouped by resource |
 | Core Config | `app/core/config.py` | Pydantic settings, environment variables, AI provider config |
-| Redis Manager | `app/core/redis.py` | Singleton Redis connection for sessions/pubsub |
-| Database | `app/db/` | Async PostgreSQL connection (SQLAlchemy), sync for batch ops (SQLModel) |
+| State Manager | `app/core/state.py` | In-process ephemeral state for sessions/pubsub (replaces Redis) |
+| Database | `app/db/` | Async SQLite connection (SQLAlchemy + aiosqlite), sync for batch ops (SQLModel) |
 | Schemas | `app/schemas/` | Pydantic models for API request/response |
 | Repositories | `app/repositories/` | CRUD operations, query building |
 | Services | `app/services/` | Business logic layer (see 10.3 for breakdown) |
@@ -1033,7 +1027,7 @@ prompt_audit
   └── id, prompt_version, prompt_template, challenge_id, ai_response,
       provider, sanitized, recorded_at
 
-sessions_websocket  (Redis, in-memory, not in DB)
+sessions_websocket  (in-process memory, not in DB)
   └── session_id -> {connected_user_ids, round_state, entries_ready, ...}
 ```
 
@@ -1059,14 +1053,14 @@ sessions_websocket  (Redis, in-memory, not in DB)
 | name | TEXT | "Tiny Tagline" |
 | interaction_type | TEXT | "Quick Text" |
 | prompt | TEXT | "Write a slogan for a dragon-owned bakery." |
-| constraints | JSONB | Array of constraint objects |
+| constraints | JSON | Array of constraint objects |
 | time_limit_seconds | INTEGER | 15 |
 | input_type | TEXT | "text_single_line" |
 | voting_criteria | TEXT | "most_believable" |
 | difficulty | INTEGER | 1-5 |
-| scoring_rules | JSONB | Base score, multipliers |
+| scoring_rules | JSON | Base score, multipliers |
 | ai_prompt_template_id | TEXT | Foreign key to prompt templates |
-| replayability | JSONB | Daily variants, constraint pool |
+| replayability | JSON | Daily variants, constraint pool |
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
 
@@ -1081,7 +1075,7 @@ sessions_websocket  (Redis, in-memory, not in DB)
 | human_entry_id | UUID (FK) | |
 | ai_entry_id | UUID (FK) | |
 | vote | TEXT | "A" or "B" (which entry the player chose as AI) |
-| reveal_data | JSONB | {human_was: "A"/"B", humanity_human: 0-100, humanity_ai: 0-100} |
+| reveal_data | JSON | {human_was: "A"/"B", humanity_human: 0-100, humanity_ai: 0-100} |
 | state | TEXT | "writing", "reveal_ai", "voting", "scored" |
 | started_at | TIMESTAMP | |
 | completed_at | TIMESTAMP | |
@@ -1104,8 +1098,9 @@ sessions_websocket  (Redis, in-memory, not in DB)
 ### Notes
 
 - All prompts and responses are stored for audit/reproducibility.
-- The `sessions_websocket` table is intentionally Redis (not PostgreSQL) — it's ephemeral state for WebSocket connection management.
+- The `sessions_websocket` state is intentionally in-process memory (not SQLite) — it's ephemeral state for WebSocket connection management.
 - `challenge_daily` table enables deterministic daily challenge selection by date.
+- SQLite runs in WAL mode with `PRAGMA foreign_keys=ON`; generic `JSON` columns are used (not PostgreSQL `JSONB`) for driver portability.
 
 ---
 
@@ -1130,8 +1125,8 @@ All real-time game state is communicated via WebSocket. REST is used for static 
 
 - On frontend connect, the client sends its `guest_id` or `user_id`.
 - The WebSocket handler validates the session and subscribes the client to the session's pub/sub channel.
-- Each session is a separate Redis pub/sub channel.
-- If a client disconnects mid-round, they can rejoin (state is persisted in PostgreSQL; ephemeral state in Redis).
+- Each session gets an in-process pub/sub topic (single backend process in the MVP).
+- If a client disconnects mid-round, they can rejoin (state is persisted in SQLite; ephemeral state in memory).
 
 ---
 
@@ -1278,6 +1273,7 @@ These guidelines prevent architectural drift and ensure the web-first, micro-cha
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-08-03 | Initial draft. Based on analysis of idea.md and idea2.md. Defines the micro-first, web-first, social-deduction architecture. |
+| 1.1 | 2026-09-28 | Delivery model changed to a local-first web dashboard: SQLite replaces PostgreSQL, in-process state replaces Redis, Docker Compose removed. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. Game rules, AI fairness constraints, and challenge engine unchanged. |
 
 ---
 
@@ -1300,7 +1296,7 @@ Appendix B: Future Roadmap
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| MVP | Quick Text + Bluff mode, web app, 20 challenge templates | Current |
+| MVP | Quick Text + Bluff mode, local web app (SQLite), 20 challenge templates | Current |
 | Phase 2 | Weekly challenges, 100+ templates, result card images | Future |
 | Phase 3 | True multiplayer, Visual/Build/Explain challenge types | Future |
 | Phase 4 | Tournaments, Creator mode, Battle Pass | Future |

@@ -68,7 +68,7 @@ This document is the **technical reference** for implementing Man vs. Machine. I
 
 ## 1. Database Schema
 
-All tables use PostgreSQL with SQLAlchemy 2.0 (async) and SQLModel for model definitions where appropriate. The database stores all persistent game state. Ephemeral WebSocket state lives in Redis.
+All tables use SQLite (via SQLAlchemy 2.0 async + aiosqlite, WAL mode) and SQLModel for model definitions where appropriate. The database is a single local file; it stores all persistent game state. Ephemeral WebSocket state lives in an in-process store (no Redis in the MVP).
 
 ### 1.1 SQLModel Models (Python)
 
@@ -96,26 +96,26 @@ class Challenge(SQLModel, table=True):
     name: str
     interaction_type: str = "Quick Text"
     prompt: str
-    constraints: list[dict] = Field(sa_column_kwargs={"type_": "JSONB"})
+    constraints: list[dict] = Field(sa_column_kwargs={"type_": "JSON"})
     time_limit_seconds: int = 20
     input_type: str = "text_single_line"
     voting_criteria: str = "most_believable"
     difficulty: int = 2  # 1-5
-    scoring_rules: dict = Field(sa_column_kwargs={"type_": "JSONB"})
+    scoring_rules: dict = Field(sa_column_kwargs={"type_": "JSON"})
     ai_prompt_template_id: str
-    replayability: dict = Field(sa_column_kwargs={"type_": "JSONB"})
+    replayability: dict = Field(sa_column_kwargs={"type_": "JSON"})
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
 
 class ChallengeDaily(SQLModel, table=True):
     date: date = Field(primary_key=True)
     challenge_id: str = Field(foreign_key="challenge.id")
-    variant_constraints: list[dict] | None = Field(default=None, sa_column_kwargs={"type_": "JSONB"})
+    variant_constraints: list[dict] | None = Field(default=None, sa_column_kwargs={"type_": "JSON"})
 
 class Session(SQLModel, table=True):
     id: str = Field(default_factory=gen_uuid, primary_key=True)
     user_id: str = Field(foreign_key="user.id")
-    challenge_ids: list[str] = Field(sa_column_kwargs={"type_": "JSONB"})
+    challenge_ids: list[str] = Field(sa_column_kwargs={"type_": "JSON"})
     started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: datetime | None = None
     final_score: int | None = None
@@ -130,7 +130,7 @@ class Round(SQLModel, table=True):
     human_entry_id: str | None = None
     ai_entry_id: str | None = None
     vote: str | None = None  # "A" or "B"
-    reveal_data: dict = Field(sa_column_kwargs={"type_": "JSONB"}, default_factory=dict)
+    reveal_data: dict = Field(sa_column_kwargs={"type_": "JSON"}, default_factory=dict)
     state: str = "writing"  # writing, reveal_ai, voting, scored
     started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: datetime | None = None
@@ -142,8 +142,8 @@ class Entry(SQLModel, table=True):
     author_type: str  # "human" or "ai"
     content: str
     submitted_at: datetime = Field(default_factory=datetime.utcnow)
-    validity: dict = Field(sa_column_kwargs={"type_": "JSONB"}, default_factory=dict)
-    constraint_violations: list[str] = Field(sa_column_kwargs={"type_": "JSONB"}, default_factory=list)
+    validity: dict = Field(sa_column_kwargs={"type_": "JSON"}, default_factory=dict)
+    constraint_violations: list[str] = Field(sa_column_kwargs={"type_": "JSON"}, default_factory=list)
 
 class AIEntry(SQLModel, table=True):
     entry_id: str = Field(foreign_key="entry.id", primary_key=True)
@@ -207,6 +207,12 @@ class PromptAudit(SQLModel, table=True):
     recorded_at: datetime = Field(default_factory=datetime.utcnow)
 ```
 
+**SQLite notes:**
+
+- Models use generic `JSON` columns (not PostgreSQL `JSONB`); SQLite stores them as TEXT with JSON validation handled in Pydantic schemas.
+- `connection.py` must enable `PRAGMA foreign_keys=ON` and WAL mode on every connect.
+- Primary keys are TEXT UUIDs (as modeled above), so no column type changes are needed for SQLite.
+
 ### 1.2 Indexes
 
 ```sql
@@ -237,12 +243,13 @@ Alembic is used for database migrations. Configuration in `alembic.ini` and `bac
 - Initial migration creates all tables from SQLModel metadata.
 - Challenge data migrations: populate `challenges` table from `app/data/challenge_library/*.json`.
 - Prompt version migrations: tracked in `prompt_audit` table; new versions added via JSON config.
+- SQLite: set `render_as_batch=True` in `alembic/env.py` (batch mode) so ALTER operations work.
 
 ---
 
 ## 2. API Endpoints
 
-All REST endpoints under `http://api.manvs.io/v1/`. WebSocket at `ws://api.manvs.io/ws`.
+All REST endpoints under `http://127.0.0.1:8000/api/v1/`. WebSocket at `ws://127.0.0.1:8000/ws`.
 
 ### 2.1 Auth
 
@@ -497,7 +504,7 @@ Generate a shareable result card for a completed session.
   ```json
   {
     "share_text": "I scored 275 on today's Man vs. Machine daily challenge! Can you beat my accuracy? #ManVsMachine",
-    "share_url": "https://manvs.io/s/abc123"  // for image
+    "share_url": "/s/abc123"  // local route to view the result
   }
   ```
 
@@ -509,7 +516,7 @@ All WebSocket events are JSON-serialized.
 
 ### 3.1 Connection
 
-- **Endpoint:** `ws://api.manvs.io/ws/session/{session_id}`
+- **Endpoint:** `ws://127.0.0.1:8000/ws/session/{session_id}`
 - **Auth:** JWT token in query parameter `?token=...`
 - **Subprotocol:** `manvs.protocol.v1`
 

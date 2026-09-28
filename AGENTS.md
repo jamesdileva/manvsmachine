@@ -1,6 +1,6 @@
 # AGENTS.md — Man vs. Machine Project Rules
 
-> **Version:** 1.0
+> **Version:** 1.1
 > **Status:** Draft — Sprint 0 (Pre-MVP)
 > **Purpose:** Operating contract for AI coding agents working on Man vs. Machine
 > **Read:** `docs/01_Master_Architecture.md` fully before starting any work.
@@ -19,7 +19,7 @@ These rules are derived from the Project Rules (Section 3) and Scope Constraint 
 6. **Every feature must be testable independently.** No feature is deployed without unit or integration tests.
 7. **Business logic belongs in backend services.** The frontend is a thin presentation layer. All game logic, scoring, AI orchestration, constraint validation, and entry anonymization live in Python services.
 8. **One responsibility per module.** Each service, repository, and component does exactly one thing.
-9. **Real-time state is authoritative.** The round state, entries, votes, and reveal are managed server-side via WebSocket + Redis. Clients cannot forge votes or skip states.
+9. **Real-time state is authoritative.** The round state, entries, votes, and reveal are managed server-side via WebSocket + in-process state. Clients cannot forge votes or skip states.
 10. **Provider fallback is mandatory.** If the primary AI provider fails, fall back to the secondary provider. If all providers fail, use the StubProvider. The game must never break.
 
 ### Scope Constraint
@@ -29,7 +29,7 @@ These rules are derived from the Project Rules (Section 3) and Scope Constraint 
 3. **No real-time multiplayer in MVP.** All MVP rounds are human-vs-AI. True multiplayer is post-MVP.
 4. **No user-generated content in MVP.** The Micro Challenge Library is curated, not community-submitted.
 5. **No monetization in MVP.** The MVP is completely free.
-6. **Web-first, no desktop app.** The game runs in the browser. No Tauri/Electron/React Native wrappers.
+6. **Web-first, local-first, no desktop app.** The game runs in the browser against a local FastAPI server with SQLite (no Docker required). No Tauri/Electron/React Native wrappers. Hosted deployment is post-MVP.
 7. **AI providers are external services.** The system uses provider APIs (OpenAI, Anthropic). Local LLM support (Ollama) is a configuration option, not the primary path.
 8. **The AI prompt must be auditable.** Every AI prompt used in a round is stored in the `prompt_audit` table and versioned.
 9. **Prompt injection protection.** AI responses are sanitized before presentation. No unfiltered LLM output reaches the UI.
@@ -168,8 +168,8 @@ cd frontend
 npm install
 npm run dev  # Vite dev server on 127.0.0.1:5173
 
-# Full stack (Docker)
-docker-compose up  # Postgres, Redis, backend, frontend
+# Full stack (local, no Docker)
+python scripts/dev.py  # backend on 127.0.0.1:8000 + frontend on 5173, SQLite auto-initialized
 
 # Tests
 cd backend && pytest -v --cov=app

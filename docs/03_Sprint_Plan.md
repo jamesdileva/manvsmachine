@@ -36,7 +36,7 @@ Each sprint follows this template:
 
 | Phase | Sprints | Description |
 |-------|---------|-------------|
-| Phase 0 | 1-4 | Foundation: project scaffolding, Docker, config, AGENTS.md |
+| Phase 0 | 1-4 | Foundation: project scaffolding, local dev config (no Docker), AGENTS.md |
 | Phase 1 | 5-7 | Database & schema, repositories, API scaffolding, auth |
 | Phase 2 | 8-10 | Challenge Engine: data files, constraint engine, challenge API |
 | Phase 3 | 11-14 | AI Layer: content filter, prompt audit, provider abstraction, AIService |
@@ -51,11 +51,11 @@ Each sprint follows this template:
 
 ### Sprint 1 — Project Scaffolding & AGENTS.md
 
-**Objective:** Set up the project root with Docker Compose, configuration, AGENTS.md, and the basic FastAPI/Vite project skeletons.
+**Objective:** Set up the project root with a local dev setup (no Docker), configuration, AGENTS.md, and the basic FastAPI/Vite project skeletons.
 
 **Files Created:**
 - `AGENTS.md` (project operating contract)
-- `docker-compose.yml` (PostgreSQL, Redis, backend, frontend)
+- `scripts/dev.py` (one-command local dev: backend + frontend + SQLite init)
 - `backend/pyproject.toml`
 - `backend/app/__init__.py`
 - `backend/app/main.py`
@@ -78,7 +78,7 @@ Each sprint follows this template:
 - Create FastAPI app with health check endpoint `GET /`
 - Configure CORS middleware (localhost:5173 for frontend dev)
 - Basic exception handler
-- Pydantic settings for environment variables (DB URL, Redis URL, AI_API_KEY, etc.)
+- Pydantic settings for environment variables (DATABASE_URL for the SQLite file, AI_API_KEY, etc.)
 
 **Frontend Changes:** None beyond scaffolding.
 
@@ -86,19 +86,19 @@ Each sprint follows this template:
 - `GET /` — Health check (returns `{"status": "ok"}`)
 
 **Acceptance Criteria:**
-- `docker-compose up` starts Postgres, Redis, backend, and frontend
+- `python scripts/dev.py` (or `uvicorn` + `npm run dev`) starts backend and frontend with no Docker required
 - Backend starts without errors on port 8000
 - Frontend starts without errors on port 5173
 - `GET /` returns `{"status": "ok"}`
-- `pyproject.toml` includes FastAPI, Uvicorn, SQLModel, SQLAlchemy, asyncpg, pytest, pytest-asyncio, ruff
+- `pyproject.toml` includes FastAPI, Uvicorn, SQLModel, SQLAlchemy, aiosqlite, pytest, pytest-asyncio, ruff
 
 **Manual Testing:**
-1. Run `docker-compose up`
+1. Run the dev script (backend + frontend)
 2. Open `http://127.0.0.1:8000/` → see `{"status": "ok"}`
 3. Open `http://127.0.0.1:8000/docs` → see FastAPI Swagger UI
 4. Open `http://localhost:5173/` → see Vite dev server page
 
-**Definition of Done:** Docker Compose starts all services, backend and frontend each render their initial page, health check responds.
+**Definition of Done:** Local dev setup starts backend and frontend without Docker, each renders its initial page, health check responds.
 
 **Estimated Time:** 30 minutes
 
@@ -130,7 +130,7 @@ Each sprint follows this template:
 - All indexes from `docs/02_Implementation_Guide.md` §1.2
 
 **Backend Changes:**
-- Async PostgreSQL connection singleton using SQLAlchemy 2.0 + SQLModel
+- Async SQLite connection (aiosqlite) using SQLAlchemy 2.0 + SQLModel, WAL mode and `PRAGMA foreign_keys=ON` enabled
 - Model definitions for all 14 tables (see §1.1 of Implementation Guide)
 - `init_db()` function using Alembic
 - Connection lifecycle in FastAPI startup/shutdown events
@@ -147,8 +147,8 @@ Each sprint follows this template:
 
 **Manual Testing:**
 1. Run `alembic upgrade head`
-2. Connect to Postgres: `\dt` → see all 14 tables
-3. `\di` → see all indexes listed
+2. Connect with `sqlite3 backend/manvsmachine.db`: `.tables` → see all 14 tables
+3. `SELECT name FROM sqlite_master WHERE type='index';` → see all indexes listed
 
 **Definition of Done:** All tables and indexes are created via Alembic migration, models match the schema in the Implementation Guide.
 
@@ -221,7 +221,7 @@ Each sprint follows this template:
 - `backend/app/core/config.py`
 - `backend/app/core/security.py`
 - `backend/app/core/exceptions.py`
-- `backend/app/core/redis.py`
+- `backend/app/core/state.py` (in-process ephemeral state store)
 - `backend/app/api/__init__.py`
 - `backend/app/api/v1/__init__.py`
 - `backend/app/api/v1/user.py`
@@ -239,7 +239,7 @@ Each sprint follows this template:
 - Password hashing with `passlib`
 - Guest user creation endpoint
 - Auth dependency for protected endpoints
-- Redis connection singleton
+- In-process ephemeral state store (replaces Redis)
 
 **Frontend Changes:** None.
 
@@ -252,7 +252,7 @@ Each sprint follows this template:
 - Guest endpoint returns `user_id`, `guest_id`, `display_name`, `token`
 - JWT tokens are generated and can be decoded
 - Protected endpoints reject requests without valid token
-- Redis connection establishes on startup
+- State store initializes on startup
 
 **Manual Testing:**
 1. Start backend
@@ -260,7 +260,7 @@ Each sprint follows this template:
 3. Use token to call a protected endpoint → verify 200
 4. Call without token → verify 401
 
-**Definition of Done:** Auth endpoints work, JWT tokens issued and verified, Redis connects, all auth tests pass.
+**Definition of Done:** Auth endpoints work, JWT tokens issued and verified, state store initializes, all auth tests pass.
 
 **Estimated Time:** 90 minutes
 
@@ -721,15 +721,15 @@ Each sprint follows this template:
 **Files Modified:**
 - `backend/app/main.py` (add WebSocket route)
 
-**Database Changes:** None (uses Redis for ephemeral state).
+**Database Changes:** None (uses in-process state for ephemeral data).
 
 **Backend Changes:**
-- `WebSocketManager`: connection lifecycle, pub/sub dispatch via Redis
+- `WebSocketManager`: connection lifecycle, dispatch via in-process pub/sub
 - WebSocket route: `/ws/session/{session_id}?token=...`
 - Auth: validate JWT from query parameter
 - Event handlers for: `SUBMIT_ENTRY`, `VOTE`, `PING`
 - Server events broadcast: `SESSION_STARTED`, `ROUND_START`, `AI_RESPONSE_READY`, `REVEAL`, `ROUND_SCORED`, `SESSION_END`, `ERROR`, `PONG`
-- Redis pub/sub channel per session
+- In-process pub/sub topic per session
 
 **Frontend Changes:** None.
 
@@ -744,7 +744,7 @@ Each sprint follows this template:
 - `SUBMIT_ENTRY` triggers AI generation and pushes `AI_RESPONSE_READY`
 - `VOTE` triggers reveal and scoring, pushes `REVEAL` + `ROUND_SCORED`
 - Invalid token → connection rejected
-- Connection failure → client can rejoin (state in PostgreSQL)
+- Connection failure → client can rejoin (state in SQLite)
 
 **Manual Testing:**
 1. Connect WebSocket with valid token → verify `SESSION_STARTED` received
@@ -757,7 +757,7 @@ Each sprint follows this template:
 
 **Estimated Time:** 90 minutes
 
-**Dependencies:** Sprint 13 (session service), Sprint 11 (voting), Sprint 12 (scoring), Sprint 4 (Redis, auth).
+**Dependencies:** Sprint 13 (session service), Sprint 11 (voting), Sprint 12 (scoring), Sprint 4 (state store, auth).
 
 ---
 
@@ -1252,7 +1252,7 @@ Each sprint follows this template:
 **Files Modified:**
 - `docs/01_Master_Architecture.md` §21 (if test approach changes)
 
-**Database Changes:** None (uses test PostgreSQL or SQLite).
+**Database Changes:** None (uses a test SQLite database).
 
 **Backend Changes:** None.
 
@@ -1374,44 +1374,41 @@ Each sprint follows this template:
 
 ---
 
-### Sprint 27 — Final Polish & Deployment Config
+### Sprint 27 — Final Polish & Local Release Config
 
-**Objective:** Add Docker production config, CI/CD workflow, environment configuration, and final polish for MVP launch.
+**Objective:** Add CI/CD workflow, environment configuration, a one-port local release mode, and final polish for the MVP launch. (Docker/Nginx production deployment is post-MVP — hosted phase.)
 
 **Files Created:**
-- `Dockerfile.backend`
-- `Dockerfile.frontend`
 - `.github/workflows/ci.yml`
-- `nginx.conf`
 - `backend/scripts/run.sh`
 - `frontend/scripts/build.sh`
+- `README.md` (quickstart: install, run, play)
 
 **Files Modified:**
-- `docker-compose.yml` (add production profiles)
+- `backend/app/main.py` (mount built frontend static files)
 
 **Database Changes:** None.
 
 **Backend Changes:**
-- Production-ready Dockerfile for backend
-- Nginx config for reverse proxy + static file serving
-- CI/CD workflow: lint + test + build on push
+- Static file mount so the FastAPI app serves the built frontend in release mode
+- CI/CD workflow: lint (ruff, mypy) + tests + frontend typecheck/build on push
 
 **Frontend Changes:**
 - Production build config
 - Environment variable handling
 
 **Acceptance Criteria:**
-- `docker-compose -f docker-compose.yml -f docker-compose.prod.yml up` starts all services in production mode
+- Fresh-checkout quickstart works: install deps, run dev script, play in browser with no Docker
 - GitHub Actions CI runs on every push: lint, test, build
-- Nginx serves frontend and proxies API/WebSocket to backend
+- `npm run build` output is served by the FastAPI backend on a single port
 - All tests pass in CI
 
 **Manual Testing:**
-1. Run production Docker Compose → verify all services start
+1. Follow the README quickstart on a clean checkout → verify the game runs locally
 2. Push to GitHub → verify CI runs and passes
-3. Verify Nginx routes `/api/` to backend, `/ws/` to WebSocket, everything else to frontend
+3. Build the frontend and serve via backend → verify single-port play (API + WebSocket + UI)
 
-**Definition of Done:** Production deployment config works, CI passes, MVP is launchable.
+**Definition of Done:** CI passes, quickstart works on a clean checkout, MVP is playable locally without Docker.
 
 **Estimated Time:** 60 minutes
 
@@ -1493,6 +1490,12 @@ Sprint 1  (Scaffolding)
       ├── Sprint 26 (Challenge Load) [depends on 5, 7]
       └── Sprint 27 (Deploy) [depends on all]
 ```
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 2026-09-28 | Delivery model revised to a local-first web dashboard: Docker Compose removed (Sprints 1, 27), SQLite replaces PostgreSQL (Sprint 2), in-process state replaces Redis (Sprints 4, 14). Sprint order, game design, and AI fairness rules unchanged. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. |
 
 ---
 
