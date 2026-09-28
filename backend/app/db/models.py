@@ -243,3 +243,22 @@ class PromptAudit(SQLModel, table=True):
     model: str
     token_count: int | None = None
     recorded_at: dt.datetime = Field(default_factory=utc_now)
+
+
+__all__ = [
+    "AIEntry",
+    "Challenge",
+    "ChallengeDaily",
+    "Entry",
+    "HumanityScore",
+    "LeaderboardSnapshot",
+    "PromptAudit",
+    "Round",
+    "Score",
+    "Session",
+    "Streak",
+    "User",
+    "Vote",
+    "gen_uuid",
+    "utc_now",
+]
