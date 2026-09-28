@@ -1,6 +1,11 @@
 """Application settings loaded from environment variables (.env supported)."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Absolute path so the DB file is always backend/manvsmachine.db regardless of cwd.
+_DEFAULT_DB = Path(__file__).resolve().parents[2] / "manvsmachine.db"
 
 
 class Settings(BaseSettings):
@@ -9,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Database (SQLite file; connection is wired up in Sprint 2)
-    database_url: str = "sqlite+aiosqlite:///./manvsmachine.db"
+    database_url: str = f"sqlite+aiosqlite:///{_DEFAULT_DB.as_posix()}"
 
     # AI providers (fallback chain: OpenAI -> Anthropic -> Stub)
     openai_api_key: str | None = None

@@ -9,6 +9,7 @@ dependencies = [
     "sqlmodel>=0.0.14",
     "sqlalchemy>=2.0",
     "aiosqlite>=0.20",
+    "alembic>=1.13",
     "pydantic>=2.5",
     "pydantic-settings>=2.1",
     "httpx>=0.26",
