@@ -37,6 +37,7 @@ class User(SQLModel, table=True):
     guest_id: str | None = Field(default=None, unique=True)
     display_name: str
     email: str | None = None
+    password_hash: str | None = None  # set for registered accounts; guests stay None
     detection_rating: float = Field(default=1000.0)
     created_at: dt.datetime = Field(default_factory=utc_now)
     updated_at: dt.datetime = Field(default_factory=utc_now)

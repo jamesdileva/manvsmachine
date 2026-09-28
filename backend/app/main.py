@@ -7,14 +7,18 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.v1 import api_router
 from app.core.config import settings
+from app.core.exceptions import AppError, error_detail
+from app.core.state import state_store
 from app.db.connection import close_db, init_db
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Migrate the database schema on startup; release connections on shutdown."""
+    """Migrate the schema and reset ephemeral state on startup; release on shutdown."""
     await init_db()
+    state_store.clear()
     yield
     await close_db()
 
@@ -26,6 +30,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(api_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -33,6 +39,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """Map domain errors (auth, conflicts, not-found) to JSON responses."""
+    return JSONResponse(status_code=exc.status_code, content=error_detail(exc))
 
 
 @app.exception_handler(Exception)

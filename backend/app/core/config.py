@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     ai_prompt_version: str = "v1.0"
     stub_provider_only: bool = False
 
+    # Auth (JWT). Override jwt_secret_key via .env outside local development.
+    # Default is >= 32 bytes (PyJWT/HS256 minimum) but must be overridden in any shared deployment.
+    jwt_secret_key: str = "dev-insecure-secret-change-me-0123456789abcdef"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24 * 30  # 30 days: guests persist across restarts
+
     # CORS (Vite dev server; 5174-5175 cover Vite's auto-increment when 5173 is occupied)
     cors_origins: list[str] = [
         "http://localhost:5173",

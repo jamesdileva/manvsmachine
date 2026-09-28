@@ -8,11 +8,20 @@ from app.schemas.leaderboard import LeaderboardEntry
 
 
 class UserRepository(BaseRepository):
+    async def create(self, user: User) -> User:
+        """Insert a user (guest or registered)."""
+        await self._save(user)
+        return user
+
     async def create_guest(self, display_name: str, guest_id: str | None = None) -> User:
         """Create a guest user (auto-generated name handled by the API layer)."""
         user = User(display_name=display_name, guest_id=guest_id)
         await self._save(user)
         return user
+
+    async def get_by_email(self, email: str) -> User | None:
+        stmt = select(User).where(User.email == email)
+        return (await self.session.execute(stmt)).scalar_one_or_none()
 
     async def get_by_id(self, user_id: str) -> User | None:
         return await self.session.get(User, user_id)
