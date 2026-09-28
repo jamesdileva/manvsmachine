@@ -1,6 +1,6 @@
 # AGENTS.md — Man vs. Machine Project Rules
 
-> **Version:** 1.1
+> **Version:** 1.2
 > **Status:** Draft — Sprint 0 (Pre-MVP)
 > **Purpose:** Operating contract for AI coding agents working on Man vs. Machine
 > **Read:** `docs/01_Master_Architecture.md` fully before starting any work.
@@ -38,16 +38,17 @@ These rules are derived from the Project Rules (Section 3) and Scope Constraint 
 
 ## Sprint Execution Workflow
 
-1. Read the sprint's section in `docs/03_Sprint_Plan.md` (including Inputs/Outputs/Acceptance Criteria)
-2. Read the relevant section(s) of `docs/02_Implementation_Guide.md`
-3. Read `docs/01_Master_Architecture.md` §20 (Agent Development Guidelines)
-4. Review the sprint's Files Created/Modified before starting
-5. Create/modify **only** the files listed in the sprint
-6. Write tests first (TDD): write the test, run it, see it fail, implement, see it pass
-7. Run linting and type checking (`ruff`, `mypy`, `tsc`)
-8. Verify **all** acceptance criteria manually
-9. Update the sprint plan changelog with what was accomplished
-10. Update documentation if the change affects specs
+Every sprint follows the same loop: **plan → scope → implement → verify → commit → worklog.**
+
+1. **Plan & scope.** Read the sprint's section in `docs/03_Sprint_Plan.md` (including Inputs/Outputs/Acceptance Criteria), the relevant section(s) of `docs/02_Implementation_Guide.md`, and `docs/01_Master_Architecture.md` §20 (Agent Development Guidelines). Review the sprint's Files Created/Modified before starting and record the agreed scope in the sprint's `worklog.md` entry.
+2. Create/modify **only** the files listed in the sprint
+3. Write tests first (TDD): write the test, run it, see it fail, implement, see it pass
+4. Run linting and type checking (`ruff`, `mypy`, `tsc`)
+5. Verify **all** acceptance criteria manually
+6. Update the sprint plan changelog with what was accomplished
+7. Update documentation if the change affects specs
+8. **Commit** with a descriptive message (`Sprint N: ...`); push to `origin` if the remote is reachable
+9. **Update `worklog.md`** with one entry per sprint: plan/scope, what was implemented, verification results (tests, lint, acceptance criteria), commit reference(s), and any notes or deviations
 
 ---
 
