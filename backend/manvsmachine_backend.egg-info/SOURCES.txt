@@ -1,0 +1,6 @@
+pyproject.toml
+manvsmachine_backend.egg-info/PKG-INFO
+manvsmachine_backend.egg-info/SOURCES.txt
+manvsmachine_backend.egg-info/dependency_links.txt
+manvsmachine_backend.egg-info/requires.txt
+manvsmachine_backend.egg-info/top_level.txt
