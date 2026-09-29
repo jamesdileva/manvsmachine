@@ -1,0 +1,17 @@
+{
+  "id": "challenge_twotruths_18",
+  "name": "Bluff: Two Truths",
+  "interactionType": "Quick Text",
+  "prompt": "Write two true facts and one lie about yourself. Number them 1, 2, 3.",
+  "constraints": [
+    {"type": "max_words", "value": 25, "isHard": true}
+  ],
+  "timeLimitSeconds": 20,
+  "inputType": "text_multi_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 4,
+  "scoringRules": {"baseScore": 120, "timeBonusMultiplier": 0.15, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be human-like. Include mundane truths and one believable lie. Don't make the lie obvious.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_adjectives", "must_rhyme"]}
+}

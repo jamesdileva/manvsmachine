@@ -1,0 +1,15 @@
+{
+  "id": "challenge_popularity_17",
+  "name": "Guess Popularity",
+  "interactionType": "Quick Text",
+  "prompt": "Which is more popular on the internet: pineapple on pizza, or cats wearing hats?",
+  "constraints": [],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 1,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Answer confidently but casually. Mention a number or ratio. Sound like you've seen the data.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "no_letter_e"]}
+}

@@ -1,0 +1,17 @@
+{
+  "id": "challenge_comeback_06",
+  "name": "Comeback Challenge",
+  "interactionType": "Quick Text",
+  "prompt": "Someone says: \"You're late.\" Respond with the funniest comeback.",
+  "constraints": [
+    {"type": "max_words", "value": 6, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 3,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be witty, not mean. Lean into wordplay or self-deprecation. Sound human.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_adjectives", "must_rhyme"]}
+}

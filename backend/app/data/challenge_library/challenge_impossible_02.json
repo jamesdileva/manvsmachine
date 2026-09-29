@@ -1,0 +1,17 @@
+{
+  "id": "challenge_impossible_02",
+  "name": "Impossible Product",
+  "interactionType": "Quick Text",
+  "prompt": "Invent a product nobody needs.",
+  "constraints": [
+    {"type": "max_words", "value": 6, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 1,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be absurd. Lean into ridiculousness. Don't overthink it.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_include_theme", "one_sentence_only"]}
+}

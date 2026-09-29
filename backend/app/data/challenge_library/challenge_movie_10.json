@@ -1,0 +1,17 @@
+{
+  "id": "challenge_movie_10",
+  "name": "Movie Title",
+  "interactionType": "Quick Text",
+  "prompt": "Invent a movie title that sounds like a low-budget sequel no one asked for.",
+  "constraints": [
+    {"type": "max_words", "value": 4, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Sound like a real movie title that implies a ridiculous sequel. Add a number or subtitle.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "one_sentence_only"]}
+}

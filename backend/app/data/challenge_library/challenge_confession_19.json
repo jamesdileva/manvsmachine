@@ -1,0 +1,17 @@
+{
+  "id": "challenge_confession_19",
+  "name": "Bluff: Confession",
+  "interactionType": "Quick Text",
+  "prompt": "Write a short text message confessing something embarrassing you did this week.",
+  "constraints": [
+    {"type": "max_words", "value": 15, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 4,
+  "scoringRules": {"baseScore": 110, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Sound like a real text message. Use abbreviations, typos, or half-finished thoughts. Be casual.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_adjectives", "one_sentence_only"]}
+}

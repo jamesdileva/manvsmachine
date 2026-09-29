@@ -1,0 +1,17 @@
+{
+  "id": "challenge_dm_21",
+  "name": "Bluff: DM to an Ex",
+  "interactionType": "Quick Text",
+  "prompt": "Draft a text message you'd send to an ex but never would.",
+  "constraints": [
+    {"type": "max_words", "value": 15, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 4,
+  "scoringRules": {"baseScore": 120, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be raw but not too dramatic. Include a memory or inside reference. Sound like you're fighting the urge.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_adjectives", "one_sentence_only"]}
+}

@@ -1,0 +1,17 @@
+{
+  "id": "challenge_reddit_22",
+  "name": "Bluff: Reddit Comment",
+  "interactionType": "Quick Text",
+  "prompt": "You overhear someone say \"I'm not lazy, I'm in energy conservation mode.\" Comment as a Reddit user.",
+  "constraints": [
+    {"type": "max_words", "value": 25, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Sound like a Reddit comment. Use a common phrase. Maybe an emoji. Reference the post contextually.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "no_adjectives"]}
+}

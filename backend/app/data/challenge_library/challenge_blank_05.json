@@ -1,0 +1,17 @@
+{
+  "id": "challenge_blank_05",
+  "name": "Fill in the Blank",
+  "interactionType": "Quick Text",
+  "prompt": "My grandma accidentally invented ______.",
+  "constraints": [
+    {"type": "max_words", "value": 4, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be funny but grounded. Reference a mundane but plausible invention. No sci-fi.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "no_letter_e"]}
+}

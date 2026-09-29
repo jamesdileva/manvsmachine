@@ -1,0 +1,17 @@
+{
+  "id": "challenge_oneliner_13",
+  "name": "One-Liner",
+  "interactionType": "Quick Text",
+  "prompt": "Write a one-line horror story about a smart home device.",
+  "constraints": [
+    {"type": "max_words", "value": 10, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 3,
+  "scoringRules": {"baseScore": 110, "timeBonusMultiplier": 0.15, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be creepy but concise. Sound human. Don't over-explain the horror.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_adjectives", "one_sentence_only"]}
+}

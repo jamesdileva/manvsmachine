@@ -1,0 +1,17 @@
+{
+  "id": "challenge_headline_08",
+  "name": "Headline",
+  "interactionType": "Quick Text",
+  "prompt": "Write a breaking news headline about a cat who stole a sandwich.",
+  "constraints": [
+    {"type": "max_words", "value": 8, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Sound like a local news anchor. Include a location. Be specific but absurd.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "no_letter_e"]}
+}

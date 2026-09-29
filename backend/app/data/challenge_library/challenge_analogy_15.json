@@ -1,0 +1,18 @@
+{
+  "id": "challenge_analogy_15",
+  "name": "Analogy",
+  "interactionType": "Quick Text",
+  "prompt": "Explain cloud computing like I'm five. One sentence.",
+  "constraints": [
+    {"type": "max_words", "value": 15, "isHard": true},
+    {"type": "one_sentence_only", "isHard": true}
+  ],
+  "timeLimitSeconds": 20,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 110, "timeBonusMultiplier": 0.15, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Use a simple metaphor. Sound like a parent explaining to a child. Avoid jargon.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "no_adjectives"]}
+}

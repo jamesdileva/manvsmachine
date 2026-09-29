@@ -1,0 +1,17 @@
+{
+  "id": "challenge_marketing_14",
+  "name": "Marketing Challenge",
+  "interactionType": "Quick Text",
+  "prompt": "Sell a potato. 20 words maximum.",
+  "constraints": [
+    {"type": "max_words", "value": 20, "isHard": true}
+  ],
+  "timeLimitSeconds": 20,
+  "inputType": "text_multi_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 110, "timeBonusMultiplier": 0.15, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be persuasive but casual. Reference a specific use case. Sound like a human influencer.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_adjectives", "must_include_theme"]}
+}

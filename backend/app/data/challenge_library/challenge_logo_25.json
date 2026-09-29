@@ -1,0 +1,18 @@
+{
+  "id": "challenge_logo_25",
+  "name": "Logo Description",
+  "interactionType": "Quick Text",
+  "prompt": "Describe a logo for a coffee shop called \"Midnight Brew\" using exactly 3 emojis.",
+  "constraints": [
+    {"type": "exactly_n_emojis", "value": 3, "isHard": true},
+    {"type": "max_words", "value": 8, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 110, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Be descriptive but brief. Use emojis as visual descriptors. Sound human.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "no_adjectives"]}
+}

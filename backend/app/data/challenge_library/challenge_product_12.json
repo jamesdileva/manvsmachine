@@ -1,0 +1,17 @@
+{
+  "id": "challenge_product_12",
+  "name": "Product Name",
+  "interactionType": "Quick Text",
+  "prompt": "Name a self-heating coffee mug. Make it sound like a real product name.",
+  "constraints": [
+    {"type": "max_words", "value": 3, "isHard": true}
+  ],
+  "timeLimitSeconds": 15,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 1,
+  "scoringRules": {"baseScore": 100, "timeBonusMultiplier": 0.2, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Sound like a tech product announcement. Include a buzzword. Be confident.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["must_rhyme", "no_adjectives"]}
+}
