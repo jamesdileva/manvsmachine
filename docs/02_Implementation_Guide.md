@@ -1061,9 +1061,9 @@ Challenge definitions live as individual JSON files in `backend/app/data/challen
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["id", "name", "interactionType", "prompt", "constraints", 
+  "required": ["id", "name", "interactionType", "prompt", "constraints",
                "timeLimitSeconds", "inputType", "votingCriteria", "difficulty",
-               "scoringRules", "aiPromptTemplateId", "replayability"],
+               "scoringRules", "aiPromptTemplateId", "aiPromptGuidance", "replayability"],
   "properties": {
     "id": { "type": "string", "pattern": "^challenge_[a-z0-9]+_[0-9]+$" },
     "name": { "type": "string" },
@@ -1079,6 +1079,7 @@ Challenge definitions live as individual JSON files in `backend/app/data/challen
     "difficulty": { "type": "integer", "minimum": 1, "maximum": 5 },
     "scoringRules": { "$ref": "#/definitions/scoringRules" },
     "aiPromptTemplateId": { "type": "string" },
+    "aiPromptGuidance": { "type": "string" },
     "replayability": { "$ref": "#/definitions/replayability" }
   },
   "definitions": {

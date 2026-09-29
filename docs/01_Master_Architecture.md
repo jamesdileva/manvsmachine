@@ -772,6 +772,7 @@ interface ChallengeDefinition {
   difficulty: number;  // 1-5
   scoringRules: ScoringRules;
   aiPromptTemplateId: string;
+  aiPromptGuidance: string;  // per-challenge style guidance from the Micro Challenge Library
   replayability: ReplayabilityConfig;
 }
 
