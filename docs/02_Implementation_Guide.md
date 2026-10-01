@@ -252,6 +252,8 @@ Alembic is used for database migrations. Configuration in `alembic.ini` and `bac
 
 All REST endpoints under `http://127.0.0.1:8000/api/v1/`. WebSocket at `ws://127.0.0.1:8000/ws`.
 
+**Auth:** player-scoped endpoints (`/challenges/daily`, all `/session/*`) require a Bearer token (guest or account). Public: `/challenges/{id}`, `/challenges/validate`, and the `/auth/*` endpoints themselves.
+
 ### 2.1 Auth
 
 **POST `/auth/guest`**
@@ -600,6 +602,7 @@ File: `backend/app/repositories/session.py`
 | `update_state` | `(session_id: str, state: str) -> Session` | Update session state |
 | `complete` | `(session_id: str, final_score: int) -> Session` | Mark session complete |
 | `get_user_sessions` | `(user_id: str, limit: int = 20) -> list[Session]` | Recent sessions |
+| `get_active_daily_session` | `(user_id: str, for_date: date) -> Session \| None` | Uncompleted daily session started on a date (Sprint 7) |
 
 ### 4.4 VotingRepository
 

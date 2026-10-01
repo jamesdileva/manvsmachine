@@ -1275,8 +1275,8 @@ These guidelines prevent architectural drift and ensure the web-first, micro-cha
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-08-03 | Initial draft. Based on analysis of idea.md and idea2.md. Defines the micro-first, web-first, social-deduction architecture. |
-| 1.1 | 2026-09-28 | Delivery model changed to a local-first web dashboard: SQLite replaces PostgreSQL, in-process state replaces Redis, Docker Compose removed. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. Game rules, AI fairness constraints, and challenge engine unchanged. |
-| 1.2 | 2026-09-28 | Auth implementation details: PyJWT added to the backend stack (HS256 access tokens); users gained a nullable `password_hash` column (migration 002) for email/password accounts — hashing uses stdlib PBKDF2-HMAC-SHA256 (passlib is unmaintained and was never in §8). Added `GET /auth/me` protected endpoint. |
+| 1.1 | 2026-10-01 | Delivery model changed to a local-first web dashboard: SQLite replaces PostgreSQL, in-process state replaces Redis, Docker Compose removed. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. Game rules, AI fairness constraints, and challenge engine unchanged. |
+| 1.2 | 2026-10-01 | Auth implementation details: PyJWT added to the backend stack (HS256 access tokens); users gained a nullable `password_hash` column (migration 002) for email/password accounts — hashing uses stdlib PBKDF2-HMAC-SHA256 (passlib is unmaintained and was never in §8). Added `GET /auth/me` protected endpoint. |
 
 ---
 
