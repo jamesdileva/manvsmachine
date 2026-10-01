@@ -10,6 +10,8 @@ import random
 from datetime import date
 from pathlib import Path
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.repositories.challenge import ChallengeRepository
 from app.schemas.challenge import ChallengeDefinition, ConstraintResult, ValidationResult
 from app.services.constraint_engine import ConstraintEngine
@@ -70,6 +72,14 @@ class ChallengeService:
         index = for_date.toordinal() % len(self._rotation_order)
         return self._library[self._rotation_order[index]]
 
+    def get_daily_session_pool(self, for_date: date, rounds: int = 3) -> list[str]:
+        """Challenge ids for a daily session: consecutive rotation entries starting at today's pick."""
+        start = for_date.toordinal() % len(self._rotation_order)
+        return [
+            self._rotation_order[(start + offset) % len(self._rotation_order)]
+            for offset in range(rounds)
+        ]
+
     async def get_daily_challenge(
         self, for_date: date, player_rating: float | None = None
     ) -> ChallengeDefinition:
@@ -83,3 +93,39 @@ class ChallengeService:
         chosen = self.rotate_daily_challenge(for_date)
         await self.repo.increment_daily_usage(chosen.id, for_date=for_date)
         return chosen
+
+
+async def sync_library_to_db(session: AsyncSession) -> int:
+    """Idempotently insert the JSON library into the challenges table.
+
+    The endpoints that write `challenge_daily` need the rows to satisfy the FK;
+    Sprint 26 owns the full load script + data migration. Returns rows added.
+    """
+    from app.db.models import Challenge
+
+    added = 0
+    for path in sorted(LIBRARY_DIR.glob("*.json")):
+        definition = ChallengeDefinition.model_validate(json.loads(path.read_text(encoding="utf-8")))
+        if await session.get(Challenge, definition.id) is not None:
+            continue
+        dumped = definition.model_dump(by_alias=True)
+        session.add(
+            Challenge(
+                id=definition.id,
+                name=definition.name,
+                interaction_type=definition.interaction_type,
+                prompt=definition.prompt,
+                constraints=dumped["constraints"],
+                time_limit_seconds=definition.time_limit_seconds,
+                input_type=definition.input_type,
+                voting_criteria=definition.voting_criteria,
+                difficulty=definition.difficulty,
+                scoring_rules=dumped["scoringRules"],
+                ai_prompt_template_id=definition.ai_prompt_template_id,
+                replayability=dumped["replayability"],
+            )
+        )
+        added += 1
+    if added:
+        await session.commit()
+    return added

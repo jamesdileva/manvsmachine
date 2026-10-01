@@ -6,19 +6,23 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.core.exceptions import AppError, error_detail
 from app.core.state import state_store
-from app.db.connection import close_db, init_db
+from app.db.connection import close_db, get_engine, init_db
+from app.services.challenge_service import sync_library_to_db
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Migrate the schema and reset ephemeral state on startup; release on shutdown."""
+    """Migrate the schema, sync the challenge library, reset ephemeral state; release on shutdown."""
     await init_db()
     state_store.clear()
+    async with async_sessionmaker(get_engine(), expire_on_commit=False)() as db:
+        await sync_library_to_db(db)
     yield
     await close_db()
 

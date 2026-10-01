@@ -1,6 +1,8 @@
 """Play-session persistence."""
 
+import datetime as dt
 
+from sqlalchemy import func
 from sqlmodel import col, select
 
 from app.db.models import Session, utc_now
@@ -47,3 +49,17 @@ class SessionRepository(BaseRepository):
             .limit(limit)
         )
         return list((await self.session.execute(stmt)).scalars().all())
+
+    async def get_active_daily_session(self, user_id: str, for_date: dt.date) -> Session | None:
+        """The user's uncompleted daily session started on the given date, if any."""
+        stmt = (
+            select(Session)
+            .where(
+                Session.user_id == user_id,
+                col(Session.is_daily).is_(True),
+                col(Session.completed_at).is_(None),
+                func.date(Session.started_at) == for_date,
+            )
+            .order_by(col(Session.started_at).desc())
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
