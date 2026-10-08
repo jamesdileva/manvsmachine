@@ -804,7 +804,8 @@ File: `backend/app/services/ai/providers/base.py`
 class AIProvider(ABC):
     @abstractmethod
     async def generate(self, prompt: str, system_prompt: str, 
-                       temperature: float = 0.7, max_tokens: int = 100) -> str
+                       temperature: float = 0.7, max_tokens: int = 100,
+                       *, challenge_id: str | None = None) -> str
     @abstractmethod
     def is_available(self) -> bool
     @abstractmethod
@@ -818,6 +819,9 @@ class ProviderError(Exception):
 class ProviderUnavailable(ProviderError):
     pass
 ```
+
+`generate` takes an optional keyword-only `challenge_id`: external providers ignore
+it, while StubProvider needs it to pick the right entry pool.
 
 ### 6.2 OpenAIProvider
 
@@ -846,7 +850,27 @@ File: `backend/app/services/ai/providers/anthropic_provider.py`
 - Same interface, different endpoint and request format
 - Model: `claude-3-haiku-20240307` (primary for cost/speed)
 
-### 6.4 StubProvider
+### 6.4 OllamaProvider
+
+File: `backend/app/services/ai/providers/ollama_provider.py`
+
+- Local LLM option (Scope Constraint 7): no API key, no external call.
+- Calls `POST {base_url}/api/generate` with `stream: false` and `think: false`
+  (qwen3-family models otherwise spend the token budget on hidden reasoning and
+  return an empty visible response — found in the Sprint 9 bake-off).
+- `is_available()` probes `GET {base_url}/api/version` (localhost round-trip).
+- Defaults: `http://127.0.0.1:11434`, model `qwen3.5:9b` (bake-off winner on a
+  4GB-VRAM machine); both configurable via `OLLAMA_BASE_URL` / `OLLAMA_MODEL`,
+  and the provider can be removed from the chain with `OLLAMA_ENABLED=false`.
+
+```python
+class OllamaProvider(AIProvider):
+    def __init__(self, base_url: str = "http://127.0.0.1:11434",
+                 model: str = "qwen3.5:9b", timeout: int = 120):
+        ...
+```
+
+### 6.5 StubProvider
 
 File: `backend/app/services/ai/providers/stub_provider.py`
 
@@ -857,8 +881,8 @@ File: `backend/app/services/ai/providers/stub_provider.py`
 
 ```python
 class StubProvider(AIProvider):
-    def __init__(self, responses_dir: str):
-        self.responses_dir = responses_dir  # app/data/stub_entries/
+    def __init__(self, stub_dir: str):
+        self.stub_dir = stub_dir  # app/data/stub_entries/
 
     async def generate(self, prompt: str, system_prompt: str, ...) -> str:
         # Hash the prompt to select deterministically from the pool
@@ -866,19 +890,22 @@ class StubProvider(AIProvider):
         ...
 ```
 
-### 6.5 Provider Selection Logic
+### 6.6 Provider Selection Logic
 
 ```python
-class AIService:
-    def select_provider(self) -> AIProvider:
-        """
-        1. Try OpenAIProvider.is_available() — checks API key exists
-        2. If OpenAI available, use it (primary)
-        3. If OpenAI unavailable, try AnthropicProvider
-        4. If both unavailable, use StubProvider (fallback)
-        5. If StubProvider is the only option, mark the round as "stub"
-        """
+# providers/__init__.py (Sprint 9)
+def build_provider_chain(config: Settings | None = None) -> list[AIProvider]:
+    """Ordered chain: OpenAI (key) -> Anthropic (key) -> Ollama (enabled) -> Stub.
+    STUB_PROVIDER_ONLY=true collapses it to [StubProvider] (E2E tests)."""
+
+def select_provider(providers: list[AIProvider]) -> AIProvider:
+    """First provider whose is_available() is True (Stub is always last)."""
 ```
+
+Chain order and selection are implemented in `providers/__init__.py`; Sprint 10's
+`AIService.select_provider()` delegates to these. Errors map as: non-2xx ->
+`ProviderError`; connection refused / timeout -> `ProviderUnavailable`. AIService
+catches both and moves down the chain.
 
 ---
 

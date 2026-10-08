@@ -16,11 +16,18 @@ class Settings(BaseSettings):
     # Database (SQLite file; connection is wired up in Sprint 2)
     database_url: str = f"sqlite+aiosqlite:///{_DEFAULT_DB.as_posix()}"
 
-    # AI providers (fallback chain: OpenAI -> Anthropic -> Stub)
+    # AI providers (fallback chain: OpenAI -> Anthropic -> Ollama -> Stub)
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     ai_prompt_version: str = "v1.0"
     stub_provider_only: bool = False
+
+    # Local LLM (Ollama). Optional per Scope Constraint 7: no key, no external call.
+    # qwen3.5:9b won the Sprint 9 local bake-off; Ollama must send think=false for
+    # qwen3-family models (they otherwise spend the token budget on hidden reasoning).
+    ollama_enabled: bool = True
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen3.5:9b"
 
     # Auth (JWT). Override jwt_secret_key via .env outside local development.
     # Default is >= 32 bytes (PyJWT/HS256 minimum) but must be overridden in any shared deployment.

@@ -875,6 +875,9 @@ AIService.generate_entry(challenge)
     │     ├─► AnthropicProvider.generate(prompt)
     │     │       (calls https://api.anthropic.com/v1/messages)
     │     │
+    │     ├─► OllamaProvider.generate(prompt)
+    │     │       (calls a local Ollama server — optional, Scope Constraint §3.1.7)
+    │     │
     │     └─► StubProvider.generate(prompt)
     │             (returns from a pre-written template pool)
     │
@@ -883,7 +886,7 @@ AIService.generate_entry(challenge)
     └─► return sanitized entry
 ```
 
-**OpenAIProvider** is primary. **AnthropicProvider** is fallback #1. **StubProvider** is the final fallback (returns pre-written entries from a template pool, ensuring the game never breaks).
+**OpenAIProvider** is primary. **AnthropicProvider** is fallback #1. **OllamaProvider** is fallback #2 — a local option (no key, no external call) enabled by `OLLAMA_ENABLED`. **StubProvider** is the final fallback (returns pre-written entries from a template pool, ensuring the game never breaks).
 
 ### 13.2 Prompt Pipeline
 
@@ -1278,6 +1281,7 @@ These guidelines prevent architectural drift and ensure the web-first, micro-cha
 | 1.1 | 2026-10-01 | Delivery model changed to a local-first web dashboard: SQLite replaces PostgreSQL, in-process state replaces Redis, Docker Compose removed. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. Game rules, AI fairness constraints, and challenge engine unchanged. |
 | 1.2 | 2026-10-01 | Auth implementation details: PyJWT added to the backend stack (HS256 access tokens); users gained a nullable `password_hash` column (migration 002) for email/password accounts — hashing uses stdlib PBKDF2-HMAC-SHA256 (passlib is unmaintained and was never in §8). Added `GET /auth/me` protected endpoint. |
 | 1.3 | 2026-10-08 | Sprint 8 implemented per spec: ContentFilter (meta-mention/injection/leakage patterns, 500-char cap) and PromptAuditService (version-keyed templates, `AI_PROMPT_VERSION` active version, audit recording of raw + sanitized responses). No interface changes to the documented contracts; `record_usage` takes optional `raw_response`/`prompt_version` beyond the guide's signature. |
+| 1.4 | 2026-10-08 | Sprint 9 implemented per spec, plus Ollama. Provider ABC gained an optional keyword-only `challenge_id` (StubProvider needs it to pick its pool; external providers ignore it). New `OllamaProvider`: local LLM option per Scope Constraint §3.1.7, chain is OpenAI → Anthropic → Ollama → Stub, `think:false` is sent unconditionally (qwen3-family models otherwise return empty output). Chain build/selection lives in `providers/__init__.py` (`build_provider_chain`, `select_provider`). Config: `OLLAMA_ENABLED`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL` (default `qwen3.5:9b`, winner of the local bake-off on a 4GB-VRAM machine). |
 
 ---
 
