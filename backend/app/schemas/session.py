@@ -6,11 +6,19 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.schemas.challenge import ChallengeOut
+from app.schemas.scoring import RoundScore
+from app.schemas.voting import RevealResult
 
 
 class SessionStartRequest(BaseModel):
     type: Literal["daily", "practice"] = "daily"
     challenge_ids: list[str] | None = None
+
+
+class RoundEntryRequest(BaseModel):
+    """A human entry submitted for a specific round of a session."""
+
+    entry: str
 
 
 class ChallengeBrief(BaseModel):
@@ -24,6 +32,7 @@ class SessionStartResponse(BaseModel):
     type: str
     rounds_total: int
     next_challenge: ChallengeBrief
+    round_id: str | None = None  # the first round's id (Sprint 13)
 
 
 class SessionStateResponse(BaseModel):
@@ -62,3 +71,60 @@ class DailyChallengeResponse(BaseModel):
     challenge: ChallengeOut
     session_id: str
     round_number: int
+    round_id: str | None = None  # the current round's id (Sprint 13)
+
+
+# ---------------------------------------------------------------------------
+# Service DTOs (Sprint 13: the SessionService's round lifecycle)
+
+
+class RoundState(BaseModel):
+    """The round a player is about to play."""
+
+    round_id: str
+    challenge: ChallengeBrief
+    round_number: int
+    rounds_total: int
+    state: str
+
+
+class RoundSubmission(BaseModel):
+    """Both entries for a round, anonymized as A/B (no attribution)."""
+
+    round_id: str
+    entries: dict[str, str] = Field(default_factory=dict)
+    ai_provider: str = ""
+    ai_model: str = ""
+    hard_violations: list[str] = Field(default_factory=list)
+    soft_violations: list[str] = Field(default_factory=list)
+
+
+class RoundResult(BaseModel):
+    """Vote outcome: the reveal plus the round's score and rating effects."""
+
+    round_id: str
+    reveal: RevealResult
+    score: RoundScore
+    rating: float
+    streak: int
+
+
+class NextRoundResponse(BaseModel):
+    """Either the next round to play or the completed session."""
+
+    complete: bool = False
+    round: RoundState | None = None
+
+
+class SessionSummary(BaseModel):
+    """Session totals computed from the rounds and scores (service DTO)."""
+
+    session_id: str
+    type: str
+    rounds_total: int
+    rounds_played: int
+    total_score: int
+    accuracy: float | None = None
+    rounds: list[RoundSummary] = Field(default_factory=list)
+    rating_change: float | None = None  # needs a session-start rating snapshot (not in the MVP schema)
+    streak: int | None = None

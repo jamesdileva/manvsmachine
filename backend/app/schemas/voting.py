@@ -50,3 +50,14 @@ class RevealResult(BaseModel):
     humanity_human: float
     humanity_ai: float
     explanation: str
+
+
+class VoteResponse(RevealResult):
+    """The reveal plus the score and rating effects (Sprint 13)."""
+
+    base: int = 0
+    time_bonus: int = 0
+    streak_bonus: int = 0
+    total: int = 0
+    detection_rating: float = 1000.0
+    streak: int = 0

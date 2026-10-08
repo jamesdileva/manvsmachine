@@ -78,6 +78,14 @@ class ScoringRepository(BaseRepository):
             for i, (user_id, display_name, total_score, correct_count, rounds) in enumerate(rows)
         ]
 
+    async def get_scores_for_rounds(self, round_ids: list[str]) -> dict[str, Score]:
+        """Score rows keyed by round id (missing rounds are absent)."""
+        if not round_ids:
+            return {}
+        stmt = select(Score).where(col(Score.round_id).in_(round_ids))
+        rows = (await self.session.execute(stmt)).scalars().all()
+        return {row.round_id: row for row in rows}
+
     async def get_user_rating(self, user_id: str) -> float:
         """Current Detection Rating; the default for unknown users."""
         user = await self.session.get(User, user_id)

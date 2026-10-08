@@ -38,12 +38,31 @@ async def get_daily_challenge(
         game_session = await session_repo.create(
             user_id, service.get_daily_session_pool(today), is_daily=True
         )
+        # First round of the fresh session so the client has a round to play.
+        await SessionRepository(session).create_round(
+            game_session.id, game_session.challenge_ids[0], 1
+        )
 
+    round_number, round_id = await _current_round(session, game_session)
     return DailyChallengeResponse(
         challenge=ChallengeOut.from_definition(challenge),
         session_id=game_session.id,
-        round_number=min(game_session.rounds_played + 1, len(game_session.challenge_ids)),
+        round_number=round_number,
+        round_id=round_id,
     )
+
+
+async def _current_round(session: AsyncSession, game_session) -> tuple[int, str]:
+    """(round_number, round_id) of the session's current round, creating it if needed."""
+    repo = SessionRepository(session)
+    rounds = await repo.get_rounds_for_session(game_session.id)
+    next_number = min(game_session.rounds_played + 1, len(game_session.challenge_ids))
+    rnd = next((r for r in rounds if r.round_number == next_number), None)
+    if rnd is None:
+        rnd = await repo.create_round(
+            game_session.id, game_session.challenge_ids[next_number - 1], next_number
+        )
+    return rnd.round_number, rnd.id
 
 
 @router.post("/validate", response_model=ValidateResponse)

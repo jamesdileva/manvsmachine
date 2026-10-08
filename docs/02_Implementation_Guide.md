@@ -832,13 +832,32 @@ class SessionService:
     def __init__(self, session_repo, challenge_service, ai_service, voting_service, scoring_service):
         ...
 
-    def start_session(self, user_id: str, session_type: str, challenge_ids: list[str] | None = None) -> Session
+    async def start_session(self, user_id: str, session_type: str,
+                            challenge_ids: list[str] | None = None) -> Session
+    async def start_next_round(self, session_id: str, user_id: str) -> RoundState | None
+    async def submit_entry(self, round_id: str, entry: str, user_id: str) -> RoundSubmission
+    async def vote(self, round_id: str, user_id: str, vote: str) -> RoundResult
+    async def complete_round(self, round_id: str) -> RoundSummary
     def get_round_state(self, round_id: str) -> str  # "writing", "reveal_ai", "voting", "scored"
     def transition_round(self, round_id: str, target_state: str) -> bool
-    def complete_round(self, round_id: str) -> RoundSummary
-    def start_next_round(self, session_id: str) -> RoundState
-    def get_session_summary(self, session_id: str) -> SessionSummary
+    async def get_session_summary(self, session_id: str, user_id: str) -> SessionSummary
 ```
+
+This is the composition root for a round. The round state machine maps the
+Master states as `writing` → `reveal_ai` → `voting` → `scored`; `scored` is
+terminal and covers SCORE + RESULT. `transition_round` returns False (and
+changes nothing) for any transition outside the allowed graph, e.g.
+WRITING → SCORE without a vote. `submit_entry` validates input and constraints
+(hard violations raise `ConstraintViolationError` → 400), stores both entries,
+generates the AI entry, and presents the anonymized A/B pair. `vote` records
+the vote, reveals, writes the Score row, and applies the ELO rating + streaks —
+this is where the Sprint 12 scoring composition actually runs.
+
+REST surface (Sprint 13): `POST /session/start` (also creates round 1),
+`POST /session/{id}/rounds/{round_id}/entry`, `POST /voting/vote` (now returns
+reveal + score), `POST /session/{id}/next` (advances; reports completion),
+`GET /session/{id}/summary` (totals + accuracy + per-round breakdown).
+`/voting/submit-entry` remains the stateless practice path.
 
 ### 5.6 ContentFilter
 
@@ -1332,6 +1351,7 @@ The `humanity_guidance` list is appended to the system prompt as additional inst
 | `test_api_voting.py` | `POST /voting/submit-entry`: both entries returned, soft/hard violation handling, auth, 404/400/503 mapping, audit row |
 | `test_content_filter.py` | Meta-mention detection, injection pattern matching, response length limits |
 | `test_voting.py` | A/B assignment stability per round + spread across rounds, vote recording, reveal attribution, humanity persistence, double-reveal rejection |
+| `test_session.py` | State machine transitions (valid + rejected), session start pools, entry submission (validation, persistence, A/B presentation), vote→reveal→score→rating→streaks, round/session completion, summary accuracy, full HTTP game loop with StubProvider, ownership enforcement |
 | `test_scoring.py` | Round score formula (§12.5), ELO rating both ways + K-factor + floor, humanity from votes, streaks (correct/daily/gap), daily + all-time leaderboards, snapshot idempotency, leaderboard endpoints |
 | `test_session.py` | State machine transitions, round lifecycle, session summary |
 | `test_websocket.py` | Event dispatching, connection auth, error handling |

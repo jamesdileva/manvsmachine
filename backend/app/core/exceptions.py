@@ -32,6 +32,16 @@ class ConflictError(AppError):
     status_code = 409
 
 
+class ConstraintViolationError(AppError):
+    """Hard constraint violations block an entry submission."""
+
+    status_code = 400
+
+    def __init__(self, violations: list[str]) -> None:
+        super().__init__("entry violates hard constraints")
+        self.violations = violations
+
+
 def error_detail(exc: AppError) -> dict[str, Any]:
     """FastAPI-style JSON error body."""
     return {"detail": str(exc)}

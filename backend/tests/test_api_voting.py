@@ -169,21 +169,25 @@ def test_submit_entry_records_audit(
 # POST /voting/vote (Sprint 11)
 
 
-def _seed_round_for_voting(client: TestClient, maker: async_sessionmaker, round_id: str) -> None:
-    """A session + round with both entries linked, owned by the guest user."""
+def _guest_headers(client: TestClient) -> tuple[dict[str, str], str]:
+    """A guest token plus that guest's user id (each /auth/guest call is a new user)."""
     guest = client.post("/api/v1/auth/guest", json={}).json()
+    return {"Authorization": f"Bearer {guest['token']}"}, guest["user_id"]
+
+
+def _seed_round_for_voting(client: TestClient, maker: async_sessionmaker, round_id: str) -> dict[str, str]:
+    """A session + round with both entries linked, owned by a fresh guest."""
+    headers, user_id = _guest_headers(client)
 
     async def seed() -> None:
         async with maker() as session:
             session.add(
-                models.Session(
-                    user_id=guest["user_id"], challenge_ids=[CHALLENGE_ID], is_daily=True
-                )
+                models.Session(user_id=user_id, challenge_ids=[CHALLENGE_ID], is_daily=True)
             )
             await session.commit()
             game_session = (
                 await session.execute(
-                    select(models.Session).where(models.Session.user_id == guest["user_id"])
+                    select(models.Session).where(models.Session.user_id == user_id)
                 )
             ).scalars().one()
             rnd = models.Round(
@@ -209,6 +213,7 @@ def _seed_round_for_voting(client: TestClient, maker: async_sessionmaker, round_
             await session.commit()
 
     asyncio.run(seed())
+    return headers
 
 
 def test_vote_returns_the_reveal(client: TestClient, tmp_path: Path, stub_only: None) -> None:
@@ -216,8 +221,7 @@ def test_vote_returns_the_reveal(client: TestClient, tmp_path: Path, stub_only: 
         make_engine(f"sqlite+aiosqlite:///{(tmp_path / 'api.db').as_posix()}"),
         expire_on_commit=False,
     )
-    _seed_round_for_voting(client, maker, "round-vote-1")
-    headers = _auth_headers(client)
+    headers = _seed_round_for_voting(client, maker, "round-vote-1")
 
     response = client.post(
         "/api/v1/voting/vote",
@@ -234,13 +238,19 @@ def test_vote_returns_the_reveal(client: TestClient, tmp_path: Path, stub_only: 
     assert 0 <= body["humanity_human"] <= 100
     assert 0 <= body["humanity_ai"] <= 100
     assert body["explanation"]
+    # Sprint 13: the vote now scores the round (base 100 on a correct detection).
+    assert body["base"] == (100 if body["vote_correct"] else 0)
+    assert body["total"] == body["base"] + body["time_bonus"] + body["streak_bonus"]
+    assert body["detection_rating"] != 1000.0
+    assert body["streak"] == (1 if body["vote_correct"] else 0)
 
 
 def test_vote_unknown_round(client: TestClient, stub_only: None) -> None:
+    headers, _ = _guest_headers(client)
     response = client.post(
         "/api/v1/voting/vote",
         json={"round_id": "round-missing", "vote": "A"},
-        headers=_auth_headers(client),
+        headers=headers,
     )
     assert response.status_code == 404
 
@@ -250,11 +260,11 @@ def test_vote_invalid_letter(client: TestClient, tmp_path: Path, stub_only: None
         make_engine(f"sqlite+aiosqlite:///{(tmp_path / 'api.db').as_posix()}"),
         expire_on_commit=False,
     )
-    _seed_round_for_voting(client, maker, "round-vote-2")
+    headers = _seed_round_for_voting(client, maker, "round-vote-2")
     response = client.post(
         "/api/v1/voting/vote",
         json={"round_id": "round-vote-2", "vote": "C"},
-        headers=_auth_headers(client),
+        headers=headers,
     )
     assert response.status_code == 400
 
@@ -264,8 +274,7 @@ def test_vote_twice_is_rejected(client: TestClient, tmp_path: Path, stub_only: N
         make_engine(f"sqlite+aiosqlite:///{(tmp_path / 'api.db').as_posix()}"),
         expire_on_commit=False,
     )
-    _seed_round_for_voting(client, maker, "round-vote-3")
-    headers = _auth_headers(client)
+    headers = _seed_round_for_voting(client, maker, "round-vote-3")
     payload = {"round_id": "round-vote-3", "vote": "A"}
     assert client.post("/api/v1/voting/vote", json=payload, headers=headers).status_code == 200
     assert client.post("/api/v1/voting/vote", json=payload, headers=headers).status_code == 409

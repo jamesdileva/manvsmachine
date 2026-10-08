@@ -1,11 +1,11 @@
-"""Play-session persistence."""
+"""Play-session persistence: sessions, their rounds, and round entries."""
 
 import datetime as dt
 
 from sqlalchemy import func
 from sqlmodel import col, select
 
-from app.db.models import Session, utc_now
+from app.db.models import Entry, Round, Session, utc_now
 from app.repositories.base import BaseRepository
 
 VALID_SESSION_STATES = {"in_progress", "completed"}
@@ -40,6 +40,19 @@ class SessionRepository(BaseRepository):
         await self.session.commit()
         return game_session
 
+    async def save(self, game_session: Session) -> Session:
+        """Persist mutations to an attached session row."""
+        await self._save(game_session)
+        return game_session
+
+    async def increment_rounds_played(self, session_id: str) -> Session | None:
+        game_session = await self.get(session_id)
+        if game_session is None:
+            return None
+        game_session.rounds_played += 1
+        await self._save(game_session)
+        return game_session
+
     async def get_user_sessions(self, user_id: str, limit: int = 20) -> list[Session]:
         """Most recent sessions for a user."""
         stmt = (
@@ -63,3 +76,52 @@ class SessionRepository(BaseRepository):
             .order_by(col(Session.started_at).desc())
         )
         return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    # ---------------------------------------------------------------------------
+    # Rounds and entries (owned by the session aggregate)
+
+    async def create_round(
+        self, session_id: str, challenge_id: str, round_number: int, state: str = "writing"
+    ) -> Round:
+        rnd = Round(
+            session_id=session_id,
+            challenge_id=challenge_id,
+            round_number=round_number,
+            state=state,
+        )
+        await self._save(rnd)
+        return rnd
+
+    async def get_round(self, round_id: str) -> Round | None:
+        return await self.session.get(Round, round_id)
+
+    async def get_rounds_for_session(self, session_id: str) -> list[Round]:
+        stmt = (
+            select(Round)
+            .where(Round.session_id == session_id)
+            .order_by(col(Round.round_number))
+        )
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def save_round(self, rnd: Round) -> Round:
+        """Persist mutations to an attached round row."""
+        await self._save(rnd)
+        return rnd
+
+    async def create_entry(
+        self,
+        round_id: str,
+        author_type: str,
+        content: str,
+        validity: dict | None = None,
+        constraint_violations: list[str] | None = None,
+    ) -> Entry:
+        entry = Entry(
+            round_id=round_id,
+            author_type=author_type,
+            content=content,
+            validity=validity or {},
+            constraint_violations=constraint_violations or [],
+        )
+        await self._save(entry)
+        return entry
