@@ -1,4 +1,6 @@
-"""Leaderboard entry shared schema."""
+"""Leaderboard schemas: entry rows and endpoint responses."""
+
+import datetime as dt
 
 from pydantic import BaseModel
 
@@ -16,3 +18,16 @@ class LeaderboardEntry(BaseModel):
     score: int | None = None
     rating: float | None = None
     accuracy: float | None = None
+
+
+class DailyLeaderboardResponse(BaseModel):
+    """Today's (or a given date's) board: rows ranked by total score."""
+
+    date: dt.date
+    entries: list[LeaderboardEntry]
+
+
+class AllTimeLeaderboardResponse(BaseModel):
+    """All-time board: rows ranked by Detection Rating."""
+
+    entries: list[LeaderboardEntry]

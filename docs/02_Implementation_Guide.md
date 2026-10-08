@@ -434,6 +434,8 @@ Get session summary after completion.
 
 ### 2.4 Leaderboard
 
+Public read-only aggregates (no auth required).
+
 **GET `/leaderboard/daily`**
 
 Today's leaderboard.
@@ -793,12 +795,33 @@ class ScoringService:
     def calculate_round_score(self, vote_correct: bool, time_remaining: float,
                               time_limit: float, streak: int, challenge: ChallengeDefinition) -> RoundScore
     def calculate_rating_change(self, player_rating: float, ai_humanity_score: float,
-                                vote_correct: bool) -> float
+                                vote_correct: bool, k: float = 32.0) -> float
+    async def update_detection_rating(self, user_id: str, vote_correct: bool,
+                                      ai_humanity_score: float) -> float
     def update_humanity_score(self, entry_id: str, votes: list[Vote], is_ai: bool) -> float
     def get_current_streak(self, user_id: str, streak_type: str) -> int
     def update_streak(self, user_id: str, streak_type: str, correct: bool) -> int
-    def get_daily_leaderboard(self, date: date, limit: int = 100) -> list[dict]
 ```
+
+ELO (GDD §6.2): `expected = 1 / (1 + 10^((AI_rating - player_rating) / 400))`, change
+`= K x (actual - expected)`. The AI rating is derived from its entry's humanity
+score: `1000 + (humanity - 50) * 4` (50 = parity with a 1000-rated player).
+`K = 32` below 50 scored rounds, `16` after; ratings floor at 100.
+`update_humanity_score` derives the entry's A/B letter from the round's reveal
+(`human_was` in `reveal_data`) — 0 and unwritten before a reveal.
+
+`LeaderboardService` (`backend/app/services/leaderboard_service.py`):
+
+```python
+class LeaderboardService:
+    def __init__(self, repo: ScoringRepository, user_repo: UserRepository): ...
+    async def get_daily_leaderboard(self, for_date: date, limit: int = 100) -> list[LeaderboardEntry]
+    async def get_all_time_leaderboard(self, limit: int = 100) -> list[LeaderboardEntry]
+    async def generate_snapshot(self, for_date: date) -> list[LeaderboardEntry]
+```
+
+Daily accuracy comes from the score's base component (100 on a correct guess);
+all-time accuracy comes from scored rounds' `reveal_data.vote_correct`.
 
 ### 5.5 SessionService
 
@@ -1309,7 +1332,7 @@ The `humanity_guidance` list is appended to the system prompt as additional inst
 | `test_api_voting.py` | `POST /voting/submit-entry`: both entries returned, soft/hard violation handling, auth, 404/400/503 mapping, audit row |
 | `test_content_filter.py` | Meta-mention detection, injection pattern matching, response length limits |
 | `test_voting.py` | A/B assignment stability per round + spread across rounds, vote recording, reveal attribution, humanity persistence, double-reveal rejection |
-| `test_scoring.py` | Score formula, ELO rating math, humanity score calc, streak logic |
+| `test_scoring.py` | Round score formula (§12.5), ELO rating both ways + K-factor + floor, humanity from votes, streaks (correct/daily/gap), daily + all-time leaderboards, snapshot idempotency, leaderboard endpoints |
 | `test_session.py` | State machine transitions, round lifecycle, session summary |
 | `test_websocket.py` | Event dispatching, connection auth, error handling |
 | `test_prompt_audit.py` | Prompt versioning, audit recording, reproducibility |
