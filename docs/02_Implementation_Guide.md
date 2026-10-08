@@ -550,6 +550,33 @@ responses are recorded in `prompt_audit` (§8).
   violations or invalid input; `detail.hard_violations` lists them), 503 (every
   provider in the chain failed — should not happen: StubProvider is always last).
 
+**POST `/voting/vote`** (Sprint 11)
+
+Record the player's vote (`vote` is the entry they believe is the AI) and return
+the reveal in the same response.
+
+- **Auth:** Bearer token
+- **Request Body:**
+  ```json
+  {"round_id": "uuid", "vote": "A"}
+  ```
+- **Response (200):** `RevealResult`
+  ```json
+  {
+    "round_id": "uuid",
+    "entries": {"A": "Fire baked. Dragon approved.", "B": "Dragon's fire, fresh baked."},
+    "human_was": "A",
+    "ai_was": "B",
+    "vote": "A",
+    "vote_correct": false,
+    "humanity_human": 0.0,
+    "humanity_ai": 100.0,
+    "explanation": "Entry B was the AI and it fooled you. Humanity: your entry 0, AI entry 100."
+  }
+  ```
+- **Errors:** 401, 404 (unknown round), 400 (vote not "A"/"B"), 409 (round
+  already revealed).
+
 ---
 
 ## 3. WebSocket API
@@ -724,15 +751,33 @@ File: `backend/app/services/voting_service.py`
 class VotingService:
     def __init__(self, repo: VotingRepository):
         self.repo = repo
+        self.humanity = HumanityScoring()
 
-    def present_entries(self, human_entry: str, ai_entry: str) -> dict[str, str]
-        """Returns {"A": "entry text", "B": "entry text"} with randomized assignment."""
+    async def present_entries(self, round_id: str) -> dict[str, str]
+        """Returns {"A": "entry text", "B": "entry text"} with randomized assignment.
+        The seed derives from the round id, so the same round always presents the
+        same letters (present and reveal can never disagree) while rounds differ."""
 
-    def process_vote(self, round_id: str, vote: str) -> VoteResult
+    async def process_vote(self, round_id: str, user_id: str, vote: str) -> VoteResult
         """Records vote, determines if round can proceed to reveal."""
 
-    def reveal(self, round_id: str) -> RevealResult
-        """Determines which entry was human/AI, generates explanation."""
+    async def reveal(self, round_id: str) -> RevealResult
+        """Determines which entry was human/AI, generates explanation, scores humanity."""
+```
+
+`reveal` attributes both entries from the same seeded assignment, computes the
+retroactive humanity scores (share of voters who guessed each entry was human,
+Master §13.5), persists them to `humanity_scores`, and writes the attribution,
+vote, humanity scores, and explanation into `rounds.reveal_data`. Reveal is
+idempotency-guarded: a second reveal (or a vote after reveal) raises
+`ConflictError` → HTTP 409.
+
+`HumanityScoring` (`backend/app/services/humanity_scoring.py`):
+
+```python
+class HumanityScoring:
+    def calculate(self, votes: list[Vote], entry_letter: str) -> float  # 0-100
+    def score_round(self, votes: list[Vote], human_letter: str, ai_letter: str) -> tuple[float, float]
 ```
 
 ### 5.4 ScoringService
@@ -1263,7 +1308,7 @@ The `humanity_guidance` list is appended to the system prompt as additional inst
 | `test_ai_providers.py` | Provider ABC contract, per-provider payloads/error mapping (MockTransport), chain build + selection fall-through |
 | `test_api_voting.py` | `POST /voting/submit-entry`: both entries returned, soft/hard violation handling, auth, 404/400/503 mapping, audit row |
 | `test_content_filter.py` | Meta-mention detection, injection pattern matching, response length limits |
-| `test_voting.py` | A/B randomization (seeded), vote processing, reveal correctness |
+| `test_voting.py` | A/B assignment stability per round + spread across rounds, vote recording, reveal attribution, humanity persistence, double-reveal rejection |
 | `test_scoring.py` | Score formula, ELO rating math, humanity score calc, streak logic |
 | `test_session.py` | State machine transitions, round lifecycle, session summary |
 | `test_websocket.py` | Event dispatching, connection auth, error handling |

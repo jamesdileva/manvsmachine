@@ -1,24 +1,31 @@
-"""Voting endpoints: entry submission + AI generation trigger (Sprint 10, partial).
+"""Voting endpoints: entry submission + AI generation trigger (Sprint 10), vote + reveal (Sprint 11).
 
-The round/entry persistence and vote endpoint land in Sprints 11-13; this
-endpoint validates the human entry and produces the AI entry for the round.
+The round/entry persistence is wired up in Sprint 13; these endpoints validate,
+generate, and reveal for a round that already has both entries linked.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import AppError, NotFoundError
 from app.core.security import get_current_user_id
 from app.db.connection import get_session
 from app.repositories.challenge import ChallengeRepository
 from app.repositories.prompt_audit import PromptAuditRepository
-from app.schemas.voting import SubmitEntryRequest, SubmitEntryResponse
+from app.repositories.voting import VotingRepository
+from app.schemas.voting import (
+    RevealResult,
+    SubmitEntryRequest,
+    SubmitEntryResponse,
+    VoteRequest,
+)
 from app.services.ai.providers import ProviderError
 from app.services.ai_service import AIService
 from app.services.challenge_service import ChallengeService
 from app.services.content_filter import ContentFilter
 from app.services.prompt_audit_service import PromptAuditService
+from app.services.voting_service import VotingService
 
 router = APIRouter(prefix="/voting", tags=["voting"])
 
@@ -66,3 +73,20 @@ async def submit_entry(
         hard_violations=constraints.hard_violations,
         soft_violations=constraints.soft_violations,
     )
+
+
+@router.post("/vote", response_model=RevealResult)
+async def submit_vote(
+    body: VoteRequest,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> RevealResult:
+    """Record the player's vote (A/B = which entry is the AI) and return the reveal."""
+    service = VotingService(VotingRepository(session))
+    try:
+        await service.process_vote(body.round_id, user_id, body.vote)
+    except AppError:
+        raise
+    except ValueError as exc:  # invalid vote letter
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return await service.reveal(body.round_id)

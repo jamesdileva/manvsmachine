@@ -4,7 +4,7 @@ import random
 
 from sqlmodel import col, select
 
-from app.db.models import Entry, Round, Vote
+from app.db.models import Entry, HumanityScore, Round, Vote
 from app.repositories.base import BaseRepository
 
 VALID_VOTES = {"A", "B"}
@@ -23,6 +23,32 @@ class VotingRepository(BaseRepository):
         rnd.vote = vote
         await self.session.commit()
         return vote_row
+
+    async def get_round(self, round_id: str) -> Round | None:
+        return await self.session.get(Round, round_id)
+
+    async def get_round_entries(self, round_id: str) -> tuple[Entry, Entry] | None:
+        """(human_entry, ai_entry) for a round, or None if either is missing."""
+        rnd = await self.session.get(Round, round_id)
+        if rnd is None or rnd.human_entry_id is None or rnd.ai_entry_id is None:
+            return None
+        human = await self.session.get(Entry, rnd.human_entry_id)
+        ai = await self.session.get(Entry, rnd.ai_entry_id)
+        if human is None or ai is None:
+            return None
+        return human, ai
+
+    async def update_humanity_score(self, entry_id: str, score: float, total_votes: int) -> HumanityScore:
+        """Upsert the retroactive humanity score for an entry (Master §13.5)."""
+        row = await self.session.get(HumanityScore, entry_id)
+        if row is None:
+            row = HumanityScore(entry_id=entry_id, humanity_score=score, total_votes=total_votes)
+            self.session.add(row)
+        else:
+            row.humanity_score = score
+            row.total_votes = total_votes
+        await self.session.commit()
+        return row
 
     async def get_votes_for_round(self, round_id: str) -> list[Vote]:
         stmt = select(Vote).where(Vote.round_id == round_id).order_by(col(Vote.voted_at))

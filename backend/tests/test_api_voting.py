@@ -163,3 +163,117 @@ def test_submit_entry_records_audit(
     assert rows[0].challenge_id == CHALLENGE_ID
     assert rows[0].provider == "stub"
     assert rows[0].ai_response == response.json()["ai_entry"]
+
+
+# ---------------------------------------------------------------------------
+# POST /voting/vote (Sprint 11)
+
+
+def _seed_round_for_voting(client: TestClient, maker: async_sessionmaker, round_id: str) -> None:
+    """A session + round with both entries linked, owned by the guest user."""
+    guest = client.post("/api/v1/auth/guest", json={}).json()
+
+    async def seed() -> None:
+        async with maker() as session:
+            session.add(
+                models.Session(
+                    user_id=guest["user_id"], challenge_ids=[CHALLENGE_ID], is_daily=True
+                )
+            )
+            await session.commit()
+            game_session = (
+                await session.execute(
+                    select(models.Session).where(models.Session.user_id == guest["user_id"])
+                )
+            ).scalars().one()
+            rnd = models.Round(
+                id=round_id,
+                session_id=game_session.id,
+                challenge_id=CHALLENGE_ID,
+                round_number=1,
+                state="voting",
+            )
+            session.add(rnd)
+            await session.commit()
+            human = models.Entry(
+                round_id=rnd.id, author_type="human", content="Fire baked. Dragon approved."
+            )
+            ai = models.Entry(
+                round_id=rnd.id, author_type="ai", content="Dragon's fire, fresh baked."
+            )
+            session.add(human)
+            session.add(ai)
+            await session.commit()
+            rnd.human_entry_id = human.id
+            rnd.ai_entry_id = ai.id
+            await session.commit()
+
+    asyncio.run(seed())
+
+
+def test_vote_returns_the_reveal(client: TestClient, tmp_path: Path, stub_only: None) -> None:
+    maker = async_sessionmaker(
+        make_engine(f"sqlite+aiosqlite:///{(tmp_path / 'api.db').as_posix()}"),
+        expire_on_commit=False,
+    )
+    _seed_round_for_voting(client, maker, "round-vote-1")
+    headers = _auth_headers(client)
+
+    response = client.post(
+        "/api/v1/voting/vote",
+        json={"round_id": "round-vote-1", "vote": "A"},
+        headers=headers,
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert {body["human_was"], body["ai_was"]} == {"A", "B"}
+    assert body["vote"] == "A"
+    assert body["vote_correct"] == (body["vote"] == body["ai_was"])
+    assert body["entries"][body["human_was"]] == "Fire baked. Dragon approved."
+    assert body["entries"][body["ai_was"]] == "Dragon's fire, fresh baked."
+    assert 0 <= body["humanity_human"] <= 100
+    assert 0 <= body["humanity_ai"] <= 100
+    assert body["explanation"]
+
+
+def test_vote_unknown_round(client: TestClient, stub_only: None) -> None:
+    response = client.post(
+        "/api/v1/voting/vote",
+        json={"round_id": "round-missing", "vote": "A"},
+        headers=_auth_headers(client),
+    )
+    assert response.status_code == 404
+
+
+def test_vote_invalid_letter(client: TestClient, tmp_path: Path, stub_only: None) -> None:
+    maker = async_sessionmaker(
+        make_engine(f"sqlite+aiosqlite:///{(tmp_path / 'api.db').as_posix()}"),
+        expire_on_commit=False,
+    )
+    _seed_round_for_voting(client, maker, "round-vote-2")
+    response = client.post(
+        "/api/v1/voting/vote",
+        json={"round_id": "round-vote-2", "vote": "C"},
+        headers=_auth_headers(client),
+    )
+    assert response.status_code == 400
+
+
+def test_vote_twice_is_rejected(client: TestClient, tmp_path: Path, stub_only: None) -> None:
+    maker = async_sessionmaker(
+        make_engine(f"sqlite+aiosqlite:///{(tmp_path / 'api.db').as_posix()}"),
+        expire_on_commit=False,
+    )
+    _seed_round_for_voting(client, maker, "round-vote-3")
+    headers = _auth_headers(client)
+    payload = {"round_id": "round-vote-3", "vote": "A"}
+    assert client.post("/api/v1/voting/vote", json=payload, headers=headers).status_code == 200
+    assert client.post("/api/v1/voting/vote", json=payload, headers=headers).status_code == 409
+
+
+def test_vote_requires_auth(client: TestClient, stub_only: None) -> None:
+    response = client.post(
+        "/api/v1/voting/vote",
+        json={"round_id": "round-vote-4", "vote": "A"},
+    )
+    assert response.status_code == 401
