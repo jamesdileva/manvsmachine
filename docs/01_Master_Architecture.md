@@ -1277,6 +1277,7 @@ These guidelines prevent architectural drift and ensure the web-first, micro-cha
 | 1.0 | 2026-08-03 | Initial draft. Based on analysis of idea.md and idea2.md. Defines the micro-first, web-first, social-deduction architecture. |
 | 1.1 | 2026-10-01 | Delivery model changed to a local-first web dashboard: SQLite replaces PostgreSQL, in-process state replaces Redis, Docker Compose removed. Hosted deployment (PostgreSQL/Redis/Nginx) deferred to post-MVP. Game rules, AI fairness constraints, and challenge engine unchanged. |
 | 1.2 | 2026-10-01 | Auth implementation details: PyJWT added to the backend stack (HS256 access tokens); users gained a nullable `password_hash` column (migration 002) for email/password accounts — hashing uses stdlib PBKDF2-HMAC-SHA256 (passlib is unmaintained and was never in §8). Added `GET /auth/me` protected endpoint. |
+| 1.3 | 2026-10-08 | Sprint 8 implemented per spec: ContentFilter (meta-mention/injection/leakage patterns, 500-char cap) and PromptAuditService (version-keyed templates, `AI_PROMPT_VERSION` active version, audit recording of raw + sanitized responses). No interface changes to the documented contracts; `record_usage` takes optional `raw_response`/`prompt_version` beyond the guide's signature. |
 
 ---
 

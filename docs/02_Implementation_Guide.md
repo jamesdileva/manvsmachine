@@ -747,10 +747,16 @@ class ContentFilter:
         "ignore all previous instructions", "new instructions:", "system prompt",
         "you are now", "you are a different"
     ]
+    LEAKAGE_PATTERNS: list[str]  # injection patterns + first-person instruction references;
+        # sentences matching any are dropped by strip_system_prompt_leakage
+    MAX_RESPONSE_LENGTH = 500
 
     def sanitize(self, raw: str, max_length: int = 500) -> str
+    def sanitize_ai_response(self, raw: str, max_length: int = 500) -> str  # Sprint 8 name; sanitize aliases it
     def check_prompt_injection(self, text: str) -> InjectionRisk
     def check_meta_mentions(self, text: str) -> list[str]  # returns found patterns
+    def validate_no_meta_mentions(self, text: str) -> bool
+    def strip_system_prompt_leakage(self, text: str) -> str
     def validate_response(self, raw: str, challenge: ChallengeDefinition) -> ValidationResult
 ```
 
@@ -763,14 +769,16 @@ class PromptAuditService:
     def get_prompt_template(self, version: str) -> PromptTemplate
     def get_active_version(self) -> str
     def record_usage(self, challenge_id: str, prompt: str, response: str,
-                     provider: str, model: str, token_count: int | None = None) -> None
-    def list_versions(self) -> list[str]
+                     provider: str, model: str, token_count: int | None = None,
+                     raw_response: str | None = None, prompt_version: str | None = None) -> PromptAudit
+    def list_versions(self) -> list[str]  # template versions available in app/data/ai_prompts/
 
 class PromptTemplate:
     version: str
     system_prompt: str
     user_template: str  # may contain {prompt}, {constraints}, {time_limit}
     instructions: list[str]
+    humanity_guidance: list[str]
 ```
 
 ### 5.8 ShareService
