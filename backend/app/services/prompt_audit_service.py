@@ -55,17 +55,22 @@ class PromptAuditService:
         token_count: int | None = None,
         raw_response: str | None = None,
         prompt_version: str | None = None,
+        system_prompt: str | None = None,
     ) -> PromptAudit:
         """Record a prompt + response pair for audit/reproducibility (§8).
 
         `response` is the sanitized entry; `raw_response` keeps the provider's
         original output for debugging (defaults to the sanitized response).
+        `system_prompt` overrides the template's system prompt when the caller
+        sent a transformed one (AIService appends per-challenge guidance).
         """
         version = prompt_version or self.get_active_version()
         template = self.get_prompt_template(version)
         return await self.repo.record(
             prompt_version=version,
-            prompt_system=template.system_prompt,
+            prompt_system=(
+                system_prompt if system_prompt is not None else template.system_prompt
+            ),
             prompt_user=prompt,
             challenge_id=challenge_id,
             ai_response=response,

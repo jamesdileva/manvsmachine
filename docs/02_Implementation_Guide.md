@@ -517,13 +517,43 @@ Generate a shareable result card for a completed session.
   ```json
   {
     "share_text": "I scored 275 on today's Man vs. Machine daily challenge! Can you beat my accuracy? #ManVsMachine",
-    "share_url": "/s/abc123"  // local route to view the result
+    "share_url": "/s/abc123"  # local route to view the result
   }
   ```
+
+### 2.7 Voting
+
+**POST `/voting/submit-entry`** (Sprint 10; the vote endpoint arrives with VotingService in Sprint 11)
+
+Validate a human entry and trigger AI generation. Hard violations block the
+submission; soft violations are reported but allowed. The prompt + both
+responses are recorded in `prompt_audit` (§8).
+
+- **Auth:** Bearer token
+- **Request Body:**
+  ```json
+  {"challenge_id": "challenge_slogan_01", "entry": "Fire baked. Dragon approved."}
+  ```
+- **Response (200):**
+  ```json
+  {
+    "challenge_id": "challenge_slogan_01",
+    "human_entry": "Fire baked. Dragon approved.",
+    "ai_entry": "Dragon's fire, fresh baked.",
+    "provider": "ollama",
+    "model": "qwen3.5:9b",
+    "hard_violations": [],
+    "soft_violations": []
+  }
+  ```
+- **Errors:** 401 (no/invalid token), 404 (unknown challenge), 400 (hard
+  violations or invalid input; `detail.hard_violations` lists them), 503 (every
+  provider in the chain failed — should not happen: StubProvider is always last).
 
 ---
 
 ## 3. WebSocket API
+
 
 All WebSocket events are JSON-serialized.
 
@@ -664,18 +694,27 @@ File: `backend/app/services/ai_service.py`
 
 ```python
 class AIService:
-    def __init__(self, config: AIConfig, content_filter: ContentFilter, audit_service: PromptAuditService):
-        self.providers: list[AIProvider] = []  # [OpenAIProvider, AnthropicProvider, StubProvider]
-        self.active_provider: AIProvider
-        self.config = config
-        self.filter = content_filter
-        self.audit = audit_service
+    def __init__(self, config: Settings, content_filter: ContentFilter,
+                 audit_service: PromptAuditService,
+                 providers: list[AIProvider] | None = None):
+        self.providers: list[AIProvider] = []  # from build_provider_chain(config)
+        self.active_provider: AIProvider | None = None
 
     async def generate_entry(self, challenge: ChallengeDefinition, retry_on_injection: int = 3) -> str
-    def build_prompt(self, challenge: ChallengeDefinition) -> str
-    def select_provider(self) -> AIProvider
-    def get_humanity_guidance(self, challenge: ChallengeDefinition) -> str  # instructions for "deliberate imperfections"
+    def build_prompt(self, challenge: ChallengeDefinition) -> str  # user prompt from the template
+    def build_system_prompt(self, challenge: ChallengeDefinition) -> str  # template + humanity guidance
+    def get_humanity_guidance(self, challenge: ChallengeDefinition) -> str
+    def select_provider(self) -> AIProvider  # first available; delegates to §6.6 logic
+    async def aclose(self) -> None  # release provider HTTP clients
 ```
+
+`generate_entry` walks the provider chain: a provider that fails (any
+`ProviderError`) or returns a rejected response (empty, meta-mention, injection)
+is skipped after up to `retry_on_injection` attempts, and the chain continues.
+The accepted response is sanitized (`ContentFilter.sanitize_ai_response`), then
+recorded via `PromptAuditService.record_usage` (raw + sanitized, provider, model)
+before being returned. Only if every provider fails does it raise
+`ProviderUnavailable`.
 
 ### 5.3 VotingService
 
@@ -1220,7 +1259,9 @@ The `humanity_guidance` list is appended to the system prompt as additional inst
 | Test Module | Focus |
 |-------------|-------|
 | `test_challenge_engine.py` | Constraint validation (hard/soft), time limit calc, daily rotation determinism |
-| `test_ai_service.py` | Prompt construction, provider selection, fallback to StubProvider, sanitization |
+| `test_ai_service.py` | Prompt construction, provider selection, fallback to StubProvider, sanitization, audit recording |
+| `test_ai_providers.py` | Provider ABC contract, per-provider payloads/error mapping (MockTransport), chain build + selection fall-through |
+| `test_api_voting.py` | `POST /voting/submit-entry`: both entries returned, soft/hard violation handling, auth, 404/400/503 mapping, audit row |
 | `test_content_filter.py` | Meta-mention detection, injection pattern matching, response length limits |
 | `test_voting.py` | A/B randomization (seeded), vote processing, reveal correctness |
 | `test_scoring.py` | Score formula, ELO rating math, humanity score calc, streak logic |

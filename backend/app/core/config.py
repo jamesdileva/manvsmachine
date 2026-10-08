@@ -25,9 +25,12 @@ class Settings(BaseSettings):
     # Local LLM (Ollama). Optional per Scope Constraint 7: no key, no external call.
     # qwen3.5:9b won the Sprint 9 local bake-off; Ollama must send think=false for
     # qwen3-family models (they otherwise spend the token budget on hidden reasoning).
+    # Timeout is generous because the GPU is sometimes busy with other workloads:
+    # a timeout falls through to StubProvider, so the round still completes.
     ollama_enabled: bool = True
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3.5:9b"
+    ollama_timeout: int = 120
 
     # Auth (JWT). Override jwt_secret_key via .env outside local development.
     # Default is >= 32 bytes (PyJWT/HS256 minimum) but must be overridden in any shared deployment.

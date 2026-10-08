@@ -36,7 +36,13 @@ def build_provider_chain(config: Settings | None = None) -> list[AIProvider]:
     if config.anthropic_api_key:
         chain.append(AnthropicProvider(api_key=config.anthropic_api_key))
     if config.ollama_enabled:
-        chain.append(OllamaProvider(base_url=config.ollama_base_url, model=config.ollama_model))
+        chain.append(
+            OllamaProvider(
+                base_url=config.ollama_base_url,
+                model=config.ollama_model,
+                timeout=config.ollama_timeout,
+            )
+        )
     chain.append(StubProvider())
     return chain
 

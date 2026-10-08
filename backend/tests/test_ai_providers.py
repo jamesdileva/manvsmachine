@@ -253,6 +253,9 @@ def test_chain_without_keys_is_ollama_then_stub(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(settings, "stub_provider_only", False)
     chain = build_provider_chain()
     assert [provider.get_provider_name() for provider in chain] == ["ollama", "stub"]
+    ollama = chain[0]
+    assert isinstance(ollama, OllamaProvider)
+    assert ollama.timeout == settings.ollama_timeout  # configurable for GPU contention
 
 
 def test_chain_stub_provider_only_forces_stub(monkeypatch: pytest.MonkeyPatch) -> None:
