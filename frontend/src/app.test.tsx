@@ -1,16 +1,30 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import MockAdapter from 'axios-mock-adapter'
 
-import { AppRoutes } from '@/routes'
+import { apiClient } from '@/api/client'
+import App from '@/app'
+import type { AuthResponse } from '@/types'
+
+let mock: MockAdapter
+
+beforeEach(() => {
+  mock = new MockAdapter(apiClient)
+  localStorage.clear()
+  // Every app load auto-grabs a guest session; the nav reads the auth state.
+  mock.onPost('/auth/guest').reply(201, {
+    user_id: 'u1',
+    guest_id: 'g1',
+    display_name: 'Player_1234',
+    is_guest: true,
+    token: 'a.b.c',
+  } satisfies AuthResponse)
+})
 
 function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  )
+  window.history.pushState({}, '', path)
+  return render(<App />)
 }
 
 describe('routing', () => {
@@ -22,15 +36,16 @@ describe('routing', () => {
     ['/profile', 'Profile'],
     ['/auth', 'Sign in'],
     ['/settings', 'Settings'],
-  ])('renders the %s route', (path, heading) => {
+  ])('renders the %s route', async (path, heading) => {
     renderAt(path)
     expect(
-      screen.getByRole('heading', { name: heading, level: 1 }),
+      await screen.findByRole('heading', { name: heading, level: 1 }),
     ).toBeInTheDocument()
   })
 
-  it('renders an unknown route as not found', () => {
+  it('renders an unknown route as not found', async () => {
     renderAt('/nope')
+    expect(await screen.findByText('Page not found')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
   })
 })
@@ -39,6 +54,7 @@ describe('navigation', () => {
   it('navigates between routes via the nav bar', async () => {
     const user = userEvent.setup()
     renderAt('/')
+    await screen.findByRole('heading', { name: 'Man vs. Machine', level: 1 })
 
     await user.click(screen.getByRole('link', { name: 'Leaderboard' }))
     expect(
@@ -51,12 +67,11 @@ describe('navigation', () => {
     ).toBeInTheDocument()
   })
 
-  it('marks the active route in the nav bar', () => {
+  it('marks the active route in the nav bar', async () => {
     renderAt('/leaderboard')
-    expect(screen.getByRole('link', { name: 'Leaderboard' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    expect(
+      await screen.findByRole('link', { name: 'Leaderboard' }),
+    ).toHaveAttribute('aria-current', 'page')
   })
 })
 
@@ -66,7 +81,7 @@ describe('home page', () => {
     renderAt('/')
 
     await user.click(
-      screen.getByRole('button', { name: /play the daily challenge/i }),
+      await screen.findByRole('button', { name: /play the daily challenge/i }),
     )
     expect(
       screen.getByRole('heading', { name: 'Session', level: 1 }),
@@ -75,9 +90,9 @@ describe('home page', () => {
 })
 
 describe('auth page', () => {
-  it('renders the sign-in form controls', () => {
+  it('renders the sign-in form controls', async () => {
     renderAt('/auth')
-    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Continue as guest' }),

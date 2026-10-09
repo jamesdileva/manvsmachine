@@ -2,6 +2,7 @@ import {
   Home,
   LayoutDashboard,
   LogIn,
+  LogOut,
   Medal,
   Settings,
   Trophy,
@@ -9,6 +10,8 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -22,6 +25,7 @@ const NAV_ITEMS = [
 ]
 
 export function Layout() {
+  const { user, isAuthenticated, logout } = useAuth()
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -47,6 +51,20 @@ export function Layout() {
                 {label}
               </NavLink>
             ))}
+            {isAuthenticated && (
+              <div className="ml-2 flex items-center gap-2 border-l pl-2">
+                <span
+                  className="text-sm text-muted-foreground"
+                  data-testid="nav-user"
+                >
+                  {user?.display_name}
+                </span>
+                <Button variant="ghost" size="sm" onClick={logout}>
+                  <LogOut className="h-4 w-4" aria-hidden />
+                  Log out
+                </Button>
+              </div>
+            )}
           </nav>
         </div>
       </header>

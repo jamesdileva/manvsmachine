@@ -18,5 +18,10 @@ module.exports = {
       files: ['src/components/ui/**/*.tsx'],
       rules: { 'react-refresh/only-export-components': 'off' },
     },
+    {
+      // Context files legitimately export their hook alongside the provider.
+      files: ['src/contexts/**/*.tsx'],
+      rules: { 'react-refresh/only-export-components': 'off' },
+    },
   ],
 }
