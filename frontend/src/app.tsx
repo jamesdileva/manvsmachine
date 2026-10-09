@@ -1,9 +1,12 @@
+import { BrowserRouter } from 'react-router-dom'
+
+import { AppRoutes } from '@/routes'
+
 function App() {
   return (
-    <main>
-      <h1>Man vs. Machine</h1>
-      <p>Scaffolding ready — Sprint 1. The daily challenge arrives in a later sprint.</p>
-    </main>
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   )
 }
 
