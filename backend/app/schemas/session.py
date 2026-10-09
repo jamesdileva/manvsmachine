@@ -106,6 +106,7 @@ class RoundResult(BaseModel):
     reveal: RevealResult
     score: RoundScore
     rating: float
+    rating_change: float = 0.0
     streak: int
 
 
@@ -128,3 +129,14 @@ class SessionSummary(BaseModel):
     rounds: list[RoundSummary] = Field(default_factory=list)
     rating_change: float | None = None  # needs a session-start rating snapshot (not in the MVP schema)
     streak: int | None = None
+
+
+class SessionOverview(BaseModel):
+    """Session shape for the SESSION_STARTED handshake (service DTO)."""
+
+    session_id: str
+    type: str
+    rounds_total: int
+    rounds_played: int
+    completed: bool = False
+    challenges: list[ChallengeBrief] = Field(default_factory=list)

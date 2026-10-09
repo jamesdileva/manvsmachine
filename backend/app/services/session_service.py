@@ -21,6 +21,7 @@ from app.schemas.session import (
     RoundState,
     RoundSubmission,
     RoundSummary,
+    SessionOverview,
     SessionSummary,
 )
 from app.services.ai_service import AIService
@@ -92,6 +93,29 @@ class SessionService:
                 session_id, game_session.challenge_ids[next_number - 1], next_number
             )
         return self._round_state(rnd, game_session)
+
+    async def get_session_overview(self, session_id: str, user_id: str) -> SessionOverview:
+        """Session shape for the WebSocket SESSION_STARTED handshake."""
+        game_session = await self._owned_session(session_id, user_id)
+        challenges = [
+            ChallengeBrief(
+                id=challenge.id,
+                prompt=challenge.prompt,
+                time_limit_seconds=challenge.time_limit_seconds,
+            )
+            for challenge in (
+                self.challenges.get_challenge(challenge_id)
+                for challenge_id in game_session.challenge_ids
+            )
+        ]
+        return SessionOverview(
+            session_id=game_session.id,
+            type="daily" if game_session.is_daily else "practice",
+            rounds_total=len(game_session.challenge_ids),
+            rounds_played=game_session.rounds_played,
+            completed=game_session.completed_at is not None,
+            challenges=challenges,
+        )
 
     async def get_session_summary(self, session_id: str, user_id: str) -> SessionSummary:
         """Totals, accuracy, and the per-round breakdown for a session."""
@@ -195,6 +219,7 @@ class SessionService:
         await self.scoring.repo.create_score(
             user_id, round_id, score.base, score.time_bonus, score.streak_bonus, score.total
         )
+        rating_before = await self.scoring.repo.get_user_rating(user_id)
         rating = await self.scoring.update_detection_rating(
             user_id, reveal.vote_correct, reveal.humanity_ai
         )
@@ -210,6 +235,7 @@ class SessionService:
             reveal=reveal,
             score=score,
             rating=rating,
+            rating_change=round(rating - rating_before, 1),
             streak=streak_after,
         )
 

@@ -590,7 +590,14 @@ All WebSocket events are JSON-serialized.
 
 - **Endpoint:** `ws://127.0.0.1:8000/ws/session/{session_id}`
 - **Auth:** JWT token in query parameter `?token=...`
-- **Subprotocol:** `manvs.protocol.v1`
+- **Subprotocol:** `manvs.protocol.v1` (accepted when the client offers it)
+
+The token is validated **before** the socket is accepted: an invalid token or a
+session the player does not own is rejected at the handshake (HTTP 403). On
+connect the server sends `SESSION_STARTED` followed by `ROUND_START` for the
+session's current round, so reconnecting resumes from SQLite state; connecting
+to a finished session replays `SESSION_END` with the summary. Every server event
+is broadcast to the session topic, so multiple sockets stay in sync.
 
 ### 3.2 Events
 
@@ -1354,7 +1361,7 @@ The `humanity_guidance` list is appended to the system prompt as additional inst
 | `test_session.py` | State machine transitions (valid + rejected), session start pools, entry submission (validation, persistence, A/B presentation), vote→reveal→score→rating→streaks, round/session completion, summary accuracy, full HTTP game loop with StubProvider, ownership enforcement |
 | `test_scoring.py` | Round score formula (§12.5), ELO rating both ways + K-factor + floor, humanity from votes, streaks (correct/daily/gap), daily + all-time leaderboards, snapshot idempotency, leaderboard endpoints |
 | `test_session.py` | State machine transitions, round lifecycle, session summary |
-| `test_websocket.py` | Event dispatching, connection auth, error handling |
+| `test_websocket.py` | Connect/auth (rejection paths), SESSION_STARTED + ROUND_START handshake, SUBMIT_ENTRY → AI_RESPONSE_READY, full round flow (VOTE_CONFIRMED → REVEAL → ROUND_SCORED → ROUND_START), SESSION_END after 3 rounds + rejoin, PING/PONG, pub/sub to two sockets, manager dead-socket cleanup |
 | `test_prompt_audit.py` | Prompt versioning, audit recording, reproducibility |
 | `test_e2e.py` | Full flow with StubProvider: challenge → entry → AI → vote → reveal → score |
 

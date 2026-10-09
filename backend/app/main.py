@@ -14,6 +14,7 @@ from app.core.exceptions import AppError, error_detail
 from app.core.state import state_store
 from app.db.connection import close_db, get_engine, init_db
 from app.services.challenge_service import sync_library_to_db
+from app.websocket.handlers import session_socket
 
 
 @asynccontextmanager
@@ -35,6 +36,7 @@ app = FastAPI(
 )
 
 app.include_router(api_router)
+app.add_api_websocket_route("/ws/session/{session_id}", session_socket)
 
 app.add_middleware(
     CORSMiddleware,

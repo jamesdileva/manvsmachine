@@ -26,7 +26,7 @@ from app.services.scoring_service import ScoringService
 from app.services.session_service import SessionService
 from app.services.voting_service import VotingService
 
-VALID_ENTRY = "Fire baked. Dragon approved."
+VALID_ENTRY = "Bread baked by a dragon"  # not in the stub pool (avoids A/B ambiguity)
 
 
 @pytest.fixture
@@ -222,8 +222,16 @@ async def test_transition_round_rejects_unknown_states(service: SessionService) 
 # vote: reveal + score + rating + streaks
 
 
-async def _start_round_with_entry(service: SessionService, entry: str = VALID_ENTRY) -> tuple[models.Session, object]:
-    game_session = await service.start_session("user-1", "daily")
+async def _start_round_with_entry(
+    service: SessionService, entry: str = VALID_ENTRY, daily: bool = False
+) -> tuple[models.Session, object]:
+    # Score assertions need a known challenge: the daily rotation changes daily.
+    if daily:
+        game_session = await service.start_session("user-1", "daily")
+    else:
+        game_session = await service.start_session(
+            "user-1", "practice", ["challenge_slogan_01"]
+        )
     current = await service.start_next_round(game_session.id, "user-1")
     await service.submit_entry(current.round_id, entry, "user-1")
     return game_session, current
@@ -271,7 +279,7 @@ async def test_vote_scores_a_wrong_guess(
 async def test_vote_updates_the_daily_streak_for_daily_sessions(
     service: SessionService, db_session: AsyncSession
 ) -> None:
-    game_session, current = await _start_round_with_entry(service)
+    game_session, current = await _start_round_with_entry(service, daily=True)
     ai_letter = "B" if (await service.voting.present_entries(current.round_id))["A"] == VALID_ENTRY else "A"
     await service.vote(current.round_id, "user-1", ai_letter)
 
