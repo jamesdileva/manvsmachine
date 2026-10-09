@@ -1158,6 +1158,7 @@ type WSEvent =
 /                 → Home
 /session          → Session (active session)
 /session/:id      → Session (view past session)
+/challenge        → Challenge (standalone practice view)
 /leaderboard      → Leaderboard
 /profile          → Profile
 /auth             → Auth
@@ -1369,6 +1370,7 @@ The `humanity_guidance` list is appended to the system prompt as additional inst
 
 | Test Module | Focus |
 |-------------|-------|
+| `app.test.tsx` | All 7 routes render, nav navigation + active-route state, 404 fallback, home CTA, auth form controls (Sprint 15) |
 | `Timer.test.tsx` | Countdown, urgency states, auto-submit at 0 |
 | `EntryInput.test.tsx` | Text input, word/char counting, validation feedback |
 | `VotingScreen.test.tsx` | A/B display, vote button behavior, no peeking |
