@@ -15,6 +15,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Same origin as the Vite dev server, so XHR/CORS and API URLs match the app.
+    environmentOptions: { jsdom: { url: 'http://localhost:5173/' } },
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: true,
