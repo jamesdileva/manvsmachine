@@ -11,6 +11,7 @@ import {
   useAuthContext,
 } from '@/contexts/AuthContext'
 import { AppRoutes } from '@/routes'
+import { renderWithProviders } from '@/test/utils'
 import type { AuthResponse } from '@/types'
 
 const TOKEN = 'a.b.c'
@@ -249,13 +250,7 @@ describe('auth page', () => {
 describe('route guard', () => {
   it('redirects unauthenticated players to /auth', async () => {
     localStorage.setItem('manvsmachine.loggedOut', '1')
-    render(
-      <MemoryRouter initialEntries={['/session']}>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </MemoryRouter>,
-    )
+    renderWithProviders(<AppRoutes />, { route: '/session' })
 
     await waitFor(() =>
       expect(
@@ -269,13 +264,20 @@ describe('route guard', () => {
     mock
       .onGet('/auth/me')
       .reply(200, { user_id: 'u1', display_name: 'Alex', is_guest: false })
-    render(
-      <MemoryRouter initialEntries={['/session']}>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </MemoryRouter>,
-    )
+      // The Session page opens a live channel on mount.
+      .onPost('/session/start')
+      .reply(201, {
+        session_id: 's1',
+        type: 'daily',
+        rounds_total: 3,
+        next_challenge: {
+          id: 'challenge_slogan_01',
+          prompt: 'Write a slogan.',
+          time_limit_seconds: 15,
+        },
+        round_id: 'r1',
+      })
+    renderWithProviders(<AppRoutes />, { route: '/session' })
 
     await waitFor(() =>
       expect(
@@ -290,13 +292,20 @@ describe('route guard', () => {
     mock
       .onGet('/auth/me')
       .reply(200, { user_id: 'u1', display_name: 'Alex', is_guest: false })
-    render(
-      <MemoryRouter initialEntries={['/session']}>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </MemoryRouter>,
-    )
+      // The Session page opens a live channel on mount.
+      .onPost('/session/start')
+      .reply(201, {
+        session_id: 's1',
+        type: 'daily',
+        rounds_total: 3,
+        next_challenge: {
+          id: 'challenge_slogan_01',
+          prompt: 'Write a slogan.',
+          time_limit_seconds: 15,
+        },
+        round_id: 'r1',
+      })
+    renderWithProviders(<AppRoutes />, { route: '/session' })
 
     await user.click(await screen.findByRole('button', { name: /log out/i }))
     expect(
