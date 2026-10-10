@@ -20,5 +20,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // Test files share the module-level api client (mocked per file), so they
+    // must not run in parallel.
+    fileParallelism: false,
   },
 })

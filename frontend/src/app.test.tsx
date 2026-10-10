@@ -20,6 +20,44 @@ beforeEach(() => {
     is_guest: true,
     token: 'a.b.c',
   } satisfies AuthResponse)
+  // The Challenge page loads today's challenge (daily brief + full definition).
+  mock
+    .onGet('/challenges/daily')
+    .reply(200, {
+      challenge: {
+        id: 'challenge_slogan_01',
+        name: 'Tiny Tagline',
+        prompt: 'Write a slogan for a dragon-owned bakery.',
+        constraints: [{ type: 'max_words', value: 5, isHard: true }],
+        time_limit_seconds: 15,
+        input_type: 'text_single_line',
+        voting_criteria: 'most_believable',
+        difficulty: 2,
+      },
+      session_id: 's1',
+      round_number: 1,
+      round_id: 'r1',
+    })
+    .onGet('/challenges/challenge_slogan_01')
+    .reply(200, {
+      id: 'challenge_slogan_01',
+      name: 'Tiny Tagline',
+      interactionType: 'Quick Text',
+      prompt: 'Write a slogan for a dragon-owned bakery.',
+      constraints: [{ type: 'max_words', value: 5, isHard: true }],
+      timeLimitSeconds: 15,
+      inputType: 'text_single_line',
+      votingCriteria: 'most_believable',
+      difficulty: 2,
+      scoringRules: {
+        baseScore: 100,
+        timeBonusMultiplier: 0.15,
+        streakMultiplier: 0.05,
+      },
+      aiPromptTemplateId: 'v1.0',
+      aiPromptGuidance: 'Be casual.',
+      replayability: { dailyVariants: 3, constraintPool: [] },
+    })
 })
 
 function renderAt(path: string) {
