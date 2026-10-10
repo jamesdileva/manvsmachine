@@ -55,6 +55,8 @@ export interface RevealPayload {
   humanityHuman: number
   humanityAI: number
   explanation: string
+  /** Not on the wire: the page merges the round's entries in for display. */
+  entries?: Record<string, string>
 }
 
 export interface RoundScoredPayload {
