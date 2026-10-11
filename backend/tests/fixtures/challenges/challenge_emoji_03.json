@@ -1,0 +1,18 @@
+{
+  "id": "challenge_emoji_03",
+  "name": "Emoji Story",
+  "interactionType": "Quick Text",
+  "prompt": "Tell a movie plot using only 5 emojis. Title it.",
+  "constraints": [
+    {"type": "exactly_n_emojis", "value": 5, "isHard": true},
+    {"type": "max_words", "value": 3, "isHard": true}
+  ],
+  "timeLimitSeconds": 20,
+  "inputType": "text_multi_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 120, "timeBonusMultiplier": 0.15, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Pick a popular movie. Be creative with emojis. Don't list obvious ones.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_letter_e"]}
+}

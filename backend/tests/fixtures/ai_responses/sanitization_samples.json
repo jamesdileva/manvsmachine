@@ -1,0 +1,20 @@
+{
+  "description": "Sample AI responses + the sanitization contract the E2E suite checks delivered entries against (Master Architecture §13 / ContentFilter). Clean samples document the shape StubProvider serves; forbidden patterns are what ContentFilter strips or rejects (meta-mentions, injection attempts, system-prompt leakage) and what any delivered AI entry must never contain.",
+  "clean_responses": [
+    "Fire baked. Dragon approved.",
+    "Loaves forged at dawn, still warm.",
+    "Sourdough with a side of smoke."
+  ],
+  "forbidden_patterns": [
+    "As an AI",
+    "as an AI language model",
+    "language model",
+    "I cannot",
+    "Sure! Here's",
+    "system prompt",
+    "[INST]",
+    "ignore previous instructions",
+    "ignore all previous"
+  ],
+  "max_length": 500
+}

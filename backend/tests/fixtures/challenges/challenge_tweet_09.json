@@ -1,0 +1,18 @@
+{
+  "id": "challenge_tweet_09",
+  "name": "Tweet",
+  "interactionType": "Quick Text",
+  "prompt": "Write a tweet about discovering your houseplant is judging you. (Max 280 chars.)",
+  "constraints": [
+    {"type": "max_characters", "value": 280, "isHard": true},
+    {"type": "must_include_theme", "value": "plant", "isHard": false}
+  ],
+  "timeLimitSeconds": 20,
+  "inputType": "text_single_line",
+  "votingCriteria": "most_believable",
+  "difficulty": 2,
+  "scoringRules": {"baseScore": 110, "timeBonusMultiplier": 0.15, "streakMultiplier": 0.05},
+  "aiPromptTemplateId": "v1.0",
+  "aiPromptGuidance": "Sound like a tired millennial. Use casual slang. Maybe one emoji. Don't over-explain.",
+  "replayability": {"dailyVariants": 3, "constraintPool": ["no_adjectives", "exactly_n_emojis"]}
+}
