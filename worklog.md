@@ -18,6 +18,15 @@ Entry template:
 
 ---
 
+## [2026-10-10] Sprint 24 — E2E Test Flow
+- Status: done
+- Plan & scope: docs/03_Sprint_Plan.md Sprint 24 — full-game E2E flow with StubProvider over the real HTTP + WebSocket stack. Files created: `backend/tests/conftest.py`, `backend/tests/test_e2e.py`, `backend/tests/fixtures/challenges/` (3 sample definitions), `backend/tests/fixtures/ai_responses/` (sample responses + sanitization contract). Per the plan: no DB, backend, or frontend changes.
+- Implemented: `test_e2e.py` walks §12.4 steps 1-12 — guest auth → session start (3 practice challenges) → WebSocket connect → per-round entry (one per challenge's hard constraints) → anonymized A/B → vote → reveal (attribution + humanity scores) → score + rating → 3 rounds → SESSION_END summary → leaderboard + profile. Plus focused tests: AI entry provenance from the stub pool, the sanitization contract (forbidden patterns + 500-char cap), served-definition parity with the fixtures, and provider-chain collapse with no keys configured. `conftest.py` holds the shared throwaway-DB/StubProvider client fixture and the fixture loaders.
+- Verification: `pytest tests/test_e2e.py -v` → 5 passed (1.3s), deterministic across repeated runs; with `STUB_PROVIDER_ONLY=true` (the documented manual command) → 5 passed; **full backend suite 242 passed (45s)**, no leaked-connection warnings; ruff clean on new files (20 pre-existing findings live in older test files and were left alone); mypy clean. All 8 acceptance criteria + the 3 manual-testing steps pass.
+- Commits: `420bfda` Sprint 24: E2E test flow with StubProvider
+- Notes: **a real, subtle bug was found and worked around** — the suite hung whenever it crossed three TestClients in one process. Root cause: `app.websocket.manager` is a module-level singleton whose `asyncio.Lock` binds to the first event loop that awaits it, and each TestClient runs its own loop in its own thread; after that loop dies, later broadcasts block forever (any two tests passed, three hung; a stray watchdog thread changed timing enough to mask it). Fix, entirely inside the test layer (no backend change per the sprint): the E2E suite shares ONE module-scoped TestClient — which also matches how a real player's single session behaves — cutting runtime ~2.4s → ~1.3s. Worth a future sprint: make the manager loop-safe (lazy lock) rather than depending on test scoping. Step 13 of §12.4 (`POST /share/result`) cannot be covered yet — ShareService is Sprint 25 — so the flow stops after the leaderboard check. Sprint plan changelog updated.
+
+---
 ## [2026-10-10] Sprint 23 — Settings Page & Content Filter Integration
 - Status: done
 - Plan & scope: docs/03_Sprint_Plan.md Sprint 23 — Settings page (AI provider, theme toggle, sound), ThemeProvider (localStorage), useSettings (persistence); modified: app.tsx (SettingsProvider). Note: the plan's `Settings.tsx` follows the repo's lowercase page convention (`pages/settings.tsx`, placeholder from Sprint 15 rewritten) and `hooks/useSettings.ts` became `.tsx` — it exports the JSX `SettingsProvider`, and the plan's "SettingsProvider" annotation in app.tsx lands there.
