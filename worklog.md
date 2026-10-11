@@ -18,6 +18,15 @@ Entry template:
 
 ---
 
+## [2026-10-10] Sprint 23 — Settings Page & Content Filter Integration
+- Status: done
+- Plan & scope: docs/03_Sprint_Plan.md Sprint 23 — Settings page (AI provider, theme toggle, sound), ThemeProvider (localStorage), useSettings (persistence); modified: app.tsx (SettingsProvider). Note: the plan's `Settings.tsx` follows the repo's lowercase page convention (`pages/settings.tsx`, placeholder from Sprint 15 rewritten) and `hooks/useSettings.ts` became `.tsx` — it exports the JSX `SettingsProvider`, and the plan's "SettingsProvider" annotation in app.tsx lands there.
+- Implemented: `useSettings` (theme / aiProvider / soundEnabled persisted to `manvsmachine.settings`, validated on read with default + corrupt-JSON fallback, one shared state per provider tree), `ThemeProvider` (toggles the `dark` class on `<html>`; Tailwind `darkMode:['class']` + globals.css `.dark` tokens already existed since Sprint 15 but had no toggler until now), Settings page with provider `<select>` + two `role="switch"` toggles, app.tsx wrapped in `SettingsProvider > ThemeProvider`. `routes/index.tsx` needed no change — the /settings route has existed since Sprint 15.
+- Verification: 144/144 frontend tests green (14 new: defaults, per-setting persistence, restore-on-mount, corrupt fallback, shared state, html-class application, page controls + persistence); tsc/eslint/prettier clean; build OK (406 kB / 135 kB gzip). All four acceptance criteria covered by tests; manual testing confirmed the dev server serves /settings (200) and every new module transforms in dev mode. The sprint title's "Content Filter Integration" needed no work — the backend ContentFilter has been wired into AIService since Sprints 8/10, and this sprint's file list contains no filter changes.
+- Commits: `7d5d1d5` Sprint 23: Settings page, theme toggle, and persisted preferences
+- Notes: theme/explorer choice is a local preference only — the actual provider chain stays backend env config (OpenAI→Anthropic→Ollama→Stub, `STUB_PROVIDER_ONLY` for E2E), so the Settings dropdown records intent the backend honors when configured. Sound has no audio system yet (post-MVP polish); the toggle persists the preference for it.
+
+---
 ## [2026-10-10] Sprint 22 — Leaderboard & Profile Pages
 - Status: done
 - Plan & scope: docs/03_Sprint_Plan.md Sprint 22 — Leaderboard (daily/all-time tabs) + Profile (stats, streaks, humanity trend) + StreakBadge in the nav. Created: `pages/leaderboard.tsx` (rewritten from placeholder), `pages/profile.tsx` (rewritten), `components/LeaderboardTable.tsx`, `components/HumanityMeter.tsx`, `hooks/useLeaderboard.ts`. Modified: `components/layout.tsx` (nav streak), `app.test.tsx` (mocks), `types/user.ts` (stale comment).
