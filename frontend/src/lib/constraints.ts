@@ -45,7 +45,11 @@ export function checkEntry(
     if (!isClientCheckable(constraint)) continue
     const violation = checkConstraint(entry, constraint)
     if (violation) {
-      ;(constraint.isHard ? hardViolations : softViolations).push(violation)
+      if (constraint.isHard) {
+        hardViolations.push(violation)
+      } else {
+        softViolations.push(violation)
+      }
     }
   }
   return { valid: hardViolations.length === 0, hardViolations, softViolations }

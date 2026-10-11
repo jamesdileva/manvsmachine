@@ -58,6 +58,19 @@ beforeEach(() => {
       aiPromptGuidance: 'Be casual.',
       replayability: { dailyVariants: 3, constraintPool: [] },
     })
+    // The Session page starts a session and connects its live channel.
+    .onPost('/session/start')
+    .reply(201, {
+      session_id: 's1',
+      type: 'daily',
+      rounds_total: 3,
+      next_challenge: {
+        id: 'challenge_slogan_01',
+        prompt: 'Write a slogan for a dragon-owned bakery.',
+        time_limit_seconds: 15,
+      },
+      round_id: 'r1',
+    })
 })
 
 function renderAt(path: string) {

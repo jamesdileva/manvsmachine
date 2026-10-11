@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ScoringProvider } from '@/contexts/ScoringContext'
+import { SessionProvider } from '@/contexts/SessionContext'
 import { VotingProvider } from '@/contexts/VotingContext'
 
 interface Options extends Omit<RenderOptions, 'wrapper'> {
@@ -11,7 +12,7 @@ interface Options extends Omit<RenderOptions, 'wrapper'> {
   socketFactory?: Parameters<typeof VotingProvider>[0]['socketFactory']
 }
 
-/** Render with the full provider stack (auth + voting + scoring) at a route. */
+/** Render with the full provider stack (auth + voting + scoring + session) at a route. */
 export function renderWithProviders(ui: ReactElement, options: Options = {}) {
   const { route = '/', socketFactory, ...rest } = options
 
@@ -20,7 +21,9 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}) {
       <MemoryRouter initialEntries={[route]}>
         <AuthProvider>
           <VotingProvider socketFactory={socketFactory}>
-            <ScoringProvider>{children}</ScoringProvider>
+            <ScoringProvider>
+              <SessionProvider>{children}</SessionProvider>
+            </ScoringProvider>
           </VotingProvider>
         </AuthProvider>
       </MemoryRouter>

@@ -6,6 +6,7 @@ import MockAdapter from 'axios-mock-adapter'
 
 import { TOKEN_STORAGE_KEY, apiClient } from '@/api/client'
 import { ScoringProvider } from '@/contexts/ScoringContext'
+import { SessionProvider } from '@/contexts/SessionContext'
 import { VotingProvider, useVotingContext } from '@/contexts/VotingContext'
 import SessionPage from '@/pages/session'
 import { useRoundState, useSessionEvents } from '@/websocket/hooks'
@@ -91,8 +92,10 @@ function renderSession() {
     <MemoryRouter>
       <VotingProvider socketFactory={factory}>
         <ScoringProvider>
-          <SessionPage />
-          <Harness />
+          <SessionProvider>
+            <SessionPage />
+            <Harness />
+          </SessionProvider>
         </ScoringProvider>
       </VotingProvider>
     </MemoryRouter>,
@@ -239,6 +242,11 @@ describe('Session page game loop', () => {
     })
     expect(screen.getByTestId('complete')).toHaveTextContent('true')
     expect(screen.getByTestId('summary')).toHaveTextContent('115')
-    expect(screen.getByTestId('session-summary')).toBeInTheDocument()
+    // The score dwell (2.5s) holds the reveal before the summary appears.
+    expect(
+      await screen.findByTestId('session-summary', undefined, {
+        timeout: 5_000,
+      }),
+    ).toBeInTheDocument()
   }, 30_000)
 })
