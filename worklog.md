@@ -18,6 +18,15 @@ Entry template:
 
 ---
 
+## [2026-10-10] Sprint 21 — Session Flow & Session Context
+- Status: done
+- Plan & scope: full 3-round game loop orchestration per docs/03_Sprint_Plan.md Sprint 21. Files created: `frontend/src/pages/Session.tsx`, `frontend/src/contexts/SessionContext.tsx`, `frontend/src/hooks/useSession.ts`; modified: `frontend/src/routes/index.tsx`, `frontend/src/app.tsx`. No backend/DB changes.
+- Implemented: SessionContext state machine (`idle → writing → voting → reveal_ai → score → complete`); optimistic entry into `writing` from the session-start REST response so the page renders before the socket's `ROUND_START`; one-shot 2.5s score-dwell timer with a stale-score guard (prioritizing the socket's queued next round / session end over local timers); round-clock auto-submit at expiry; per-state rendering (ChallengeView+Timer+EntryInput → VotingScreen → RevealScreen+ScoreAnimation → SessionSummary). New test suites: `SessionContext.test.tsx`, `SessionClock.test.tsx`.
+- Verification: 110/110 frontend tests green (19 files, stable across runs); `tsc --noEmit` clean; eslint 0 errors; prettier check clean (one formatting fix in `src/lib/constraints.ts`); production build OK. Acceptance criteria all met. Live-verified over the real backend WebSocket with StubProvider: session start → SESSION_STARTED → ROUND_START → submit → AI_RESPONSE_READY → VOTE → VOTE_CONFIRMED → REVEAL → ROUND_SCORED → round 2 ROUND_START (score 126 = base 110 + time 16; humanity 100/0).
+- Commits: `bd1c89e` Sprint 21: SessionContext round state machine and game loop
+- Notes: two real bugs surfaced by the tests — (1) a completed round's leftover score re-entered the state machine → React "Maximum update depth exceeded", fixed with a per-round-id one-shot guard; (2) the round clock's 250ms tick starved React's act queue under fake timers, so `toFake` was narrowed to Date/setTimeout/setInterval. The sprint plan's WebSocket event names (`SUBMIT_ENTRY`, `VOTE_SUBMITTED`) drift from the backend contract (`VOTE`) — the client matches the server, same drift noted in Sprint 19. Changelog entry added to docs/03_Sprint_Plan.md.
+
+---
 ## [2026-10-08] Sprint 20 — RevealScreen, ScoreAnimation & SessionSummary
 - Status: done
 - Plan & scope: per `docs/03_Sprint_Plan.md` Sprint 20. The reveal + scoring presentation: RevealScreen, ScoreAnimation, SessionSummary, `useScoring`, and `websocket/hooks.ts`. Planned files: `components/{RevealScreen,ScoreAnimation,SessionSummary}.tsx`, `hooks/useScoring.ts`, `websocket/hooks.ts`; modified: `contexts/{VotingContext,ScoringContext}.tsx` (both already carried reveal/score state from Sprint 19 — no change needed). Wired `pages/session.tsx` to the full loop.
