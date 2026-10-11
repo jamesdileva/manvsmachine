@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ChallengeView } from '@/components/ChallengeView'
 import { EntryInput } from '@/components/EntryInput'
 import { RatingDisplay } from '@/components/RatingDisplay'
+import { ResultCard } from '@/components/ResultCard'
 import { RevealScreen } from '@/components/RevealScreen'
 import { ScoreAnimation } from '@/components/ScoreAnimation'
 import { SessionSummary } from '@/components/SessionSummary'
@@ -100,7 +101,10 @@ export default function Session() {
       )}
 
       {gameState === 'complete' && voting.summary && (
-        <SessionSummary summary={voting.summary} />
+        <>
+          <SessionSummary summary={voting.summary} />
+          <ResultCard summary={voting.summary} />
+        </>
       )}
     </div>
   )

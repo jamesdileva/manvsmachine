@@ -2,16 +2,15 @@
 
 Walks a stakeholder through a complete 3-round game over the real HTTP +
 WebSocket stack with no AI API keys: guest auth → session start → connect →
-submit → anonymized A/B → vote → reveal → score → summary → leaderboard.
+submit → anonymized A/B → vote → reveal → score → summary → leaderboard →
+share result + replay link.
 
-Step 13 of §12.4 (`POST /share/result`) lands with Sprint 25 — ShareService
-is not built yet, so the flow stops after the leaderboard check.
-
-The guide's ten Master steps (§21) and the E2E acceptance criteria are all
-covered by `test_full_game_flow_with_stub_provider` plus the focused tests
-below it.
+All thirteen steps of the guide's flow (Master Architecture §21's ten plus the
+guide's own 12 and 13) are covered by `test_full_game_flow_with_stub_provider`
+plus the focused tests below it.
 """
 
+import base64
 import json
 from collections.abc import Iterator
 from pathlib import Path
@@ -197,6 +196,32 @@ def test_full_game_flow_with_stub_provider(client) -> None:
     assert stats["overall_accuracy"] == 100
     assert stats["current_streak"] == 3
     assert stats["detection_rating"] != 1000.0
+
+    # Step 13: the finished session produces a shareable result + viewable link.
+    shared = client.post(
+        "/api/v1/share/result",
+        json={"session_id": started["session_id"], "format": "image"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert shared.status_code == 200, shared.text
+    card = shared.json()
+    assert card["share_text"] == (
+        f"I scored {summary['total_score']} on today's Man vs. Machine practice "
+        "challenge! Can you beat my accuracy? #ManVsMachine"
+    )
+    assert card["share_url"] == f"/s/{started['session_id']}"
+    assert base64.b64decode(card["share_image"])[:8] == b"\x89PNG\r\n\x1a\n"
+
+    replay = client.get(
+        f"/api/v1/share/s/{started['session_id']}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert replay.status_code == 200, replay.text
+    body = replay.json()
+    assert body["summary"]["total_score"] == summary["total_score"]
+    assert len(body["summary"]["rounds"]) == 3
+    assert all(round_entry["human_entry"] for round_entry in body["summary"]["rounds"])
+    assert all(round_entry["ai_entry"] for round_entry in body["summary"]["rounds"])
 
 
 def test_ai_entry_is_generated_from_the_stub_pool(client) -> None:

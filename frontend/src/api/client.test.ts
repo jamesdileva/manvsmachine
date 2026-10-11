@@ -370,9 +370,11 @@ describe('profile and share api', () => {
     mock.onPost('/share/result').reply(200, {
       share_text: 'I scored 275!',
       share_url: '/s/abc123',
+      share_image: 'iVBORw0KGgo=',
     })
     const share = await shareApi.result({ session_id: 's1' })
     expect(share.share_url).toBe('/s/abc123')
+    expect(share.share_image).toBe('iVBORw0KGgo=')
   })
 })
 
