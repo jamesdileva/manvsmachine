@@ -18,6 +18,16 @@ Entry template:
 
 ---
 
+## [2026-10-10] Sprint 22 — Leaderboard & Profile Pages
+- Status: done
+- Plan & scope: docs/03_Sprint_Plan.md Sprint 22 — Leaderboard (daily/all-time tabs) + Profile (stats, streaks, humanity trend) + StreakBadge in the nav. Created: `pages/leaderboard.tsx` (rewritten from placeholder), `pages/profile.tsx` (rewritten), `components/LeaderboardTable.tsx`, `components/HumanityMeter.tsx`, `hooks/useLeaderboard.ts`. Modified: `components/layout.tsx` (nav streak), `app.test.tsx` (mocks), `types/user.ts` (stale comment).
+- Implemented: sortable table (rank asc default; score/accuracy desc on first click; aria-sort; nulls last), tab switcher with proper tab/tabpanel roles, HumanityMeter 0-100 progressbar with clamping (matches RevealScreen's a11y pattern), Chart.js line trend of recent humanity scores on a canvas (chart.js 4.4.0 installed — Master §8), display-name rename via PUT, NavStreak fetching the profile only when authenticated (silent on failure). Page shells are stable across loading/loaded/error states (see notes).
+- **Backend deviation (flagged):** the sprint said "Backend Changes: None", but the live verification found `GET /profile` did not exist (404 — §2.5 was never built; Sprint 16's client was never verified live). Since the sprint's own acceptance criteria depend on it, I built it: `app/api/v1/profile.py` (GET/PUT, auth'd), `ProfileService`, `ScoringRepository.get_recent_humanity_scores`, profile schemas + router registration, 9 backend tests. 237 backend tests green, ruff/mypy clean.
+- Verification: 130/130 frontend tests green (19 new: hook 3, table 5, meter 3, leaderboard page 3, profile page 5), re-run for stability; tsc/eslint/prettier clean; build OK (403 kB / 134 kB gzip). Acceptance criteria met except the "Settings page shows AI provider options" line, which belongs to Sprint 23 (Settings has its own sprint + file list) — deliberately left for Sprint 23. Live-verified on the real backend (StubProvider): guest → full WebSocket round → daily board (score 126, accuracy 100) → all-time (rating 1007.7) → profile (rating, total_rounds 1, accuracy 100, all streaks, recent humanity) → PUT rename → DragonBakery.
+- Commits: `ed3beba` Sprint 22: Leaderboard and Profile pages + the missing /profile API
+- Notes: two gotchas found via TDD — (1) profile page's loading/loaded/error branches were separate JSX trees, so React replaced the h1 between states and `findByRole` grabbed a detached node ("element could not be found", 25ms failure); fixed by rendering a stable shell with conditional content; (2) ruff's RUF046 flags `int(round(x))` — round() already returns int. `tests/` has ~20 pre-existing ruff findings in untouched files; the project's lint command is `ruff check app/` (clean). Sprint plan changelog updated.
+
+---
 ## [2026-10-10] Sprint 21 — Session Flow & Session Context
 - Status: done
 - Plan & scope: full 3-round game loop orchestration per docs/03_Sprint_Plan.md Sprint 21. Files created: `frontend/src/pages/Session.tsx`, `frontend/src/contexts/SessionContext.tsx`, `frontend/src/hooks/useSession.ts`; modified: `frontend/src/routes/index.tsx`, `frontend/src/app.tsx`. No backend/DB changes.
