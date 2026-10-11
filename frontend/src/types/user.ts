@@ -38,7 +38,7 @@ export interface RecentHumanityScore {
   date: string
 }
 
-/** `GET /profile` response (Implementation Guide §2.5; endpoint lands in Sprint 22). */
+/** `GET /profile` response (Implementation Guide §2.5; endpoint delivered with Sprint 22). */
 export interface ProfileResponse {
   user_id: string
   display_name: string

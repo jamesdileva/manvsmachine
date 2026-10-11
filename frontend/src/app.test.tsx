@@ -71,6 +71,25 @@ beforeEach(() => {
       },
       round_id: 'r1',
     })
+    // The nav streak chip and the Profile page read the player's profile.
+    .onGet('/profile')
+    .reply(200, {
+      user_id: 'u1',
+      display_name: 'Player_1234',
+      is_guest: true,
+      detection_rating: 1012,
+      total_rounds: 47,
+      overall_accuracy: 62.3,
+      current_streak: 3,
+      longest_streak: 7,
+      daily_challenge_streak: 5,
+      recent_humanity_scores: [],
+    })
+    // The Leaderboard page reads both boards.
+    .onGet('/leaderboard/daily')
+    .reply(200, { date: '2026-10-10', entries: [] })
+    .onGet('/leaderboard/all-time')
+    .reply(200, { entries: [] })
 })
 
 function renderAt(path: string) {
@@ -123,6 +142,14 @@ describe('navigation', () => {
     expect(
       await screen.findByRole('link', { name: 'Leaderboard' }),
     ).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('shows the streak badge in the nav bar for signed-in players', async () => {
+    renderAt('/')
+    await screen.findByRole('heading', { name: 'Man vs. Machine', level: 1 })
+    expect(await screen.findByTestId('streak-badge')).toHaveTextContent(
+      '3-day streak',
+    )
   })
 })
 

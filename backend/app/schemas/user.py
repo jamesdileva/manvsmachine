@@ -34,3 +34,30 @@ class MeResponse(BaseModel):
     guest_id: str | None = None
     display_name: str
     is_guest: bool = False
+
+
+class RecentHumanityScore(BaseModel):
+    """One recent entry's humanity score, keyed by its challenge (Implementation Guide §2.5)."""
+
+    challenge_id: str
+    score: int
+    date: str
+
+
+class ProfileResponse(BaseModel):
+    """`GET /profile` payload (Implementation Guide §2.5)."""
+
+    user_id: str
+    display_name: str
+    is_guest: bool = False
+    detection_rating: float
+    total_rounds: int
+    overall_accuracy: float
+    current_streak: int
+    longest_streak: int
+    daily_challenge_streak: int
+    recent_humanity_scores: list[RecentHumanityScore] = []
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: str = Field(min_length=1, max_length=40)

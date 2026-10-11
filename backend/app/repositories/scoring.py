@@ -6,6 +6,7 @@ from sqlalchemy import case, func, or_
 from sqlmodel import col, select
 
 from app.db.models import (
+    Entry,
     HumanityScore,
     LeaderboardSnapshot,
     Round,
@@ -17,6 +18,7 @@ from app.db.models import (
 )
 from app.repositories.base import BaseRepository
 from app.schemas.leaderboard import LeaderboardEntry
+from app.schemas.user import RecentHumanityScore
 
 DEFAULT_RATING = 1000.0
 
@@ -180,6 +182,37 @@ class ScoringRepository(BaseRepository):
                 )
             )
         await self.session.commit()
+
+    async def get_recent_humanity_scores(
+        self, user_id: str, limit: int = 10
+    ) -> list[RecentHumanityScore]:
+        """Recent human-entry humanity scores for a player, newest first (§2.5 profile).
+
+        Walks humanity_scores → entries (human side) → rounds → sessions to
+        attribute each score to the player and its challenge.
+        """
+        stmt = (
+            select(
+                col(Round.challenge_id),
+                col(HumanityScore.humanity_score),
+                col(Entry.submitted_at),
+            )
+            .join(Entry, col(Entry.id) == HumanityScore.entry_id)
+            .join(Round, col(Round.id) == Entry.round_id)
+            .join(Session, col(Session.id) == Round.session_id)
+            .where(col(Session.user_id) == user_id, col(Entry.author_type) == "human")
+            .order_by(col(HumanityScore.last_updated).desc())
+            .limit(limit)
+        )
+        rows = (await self.session.execute(stmt)).all()
+        return [
+            RecentHumanityScore(
+                challenge_id=challenge_id,
+                score=round(humanity_score),
+                date=submitted_at.date().isoformat(),
+            )
+            for challenge_id, humanity_score, submitted_at in rows
+        ]
 
     async def get_snapshot(self, for_date: dt.date) -> list[LeaderboardEntry]:
         rows = (
