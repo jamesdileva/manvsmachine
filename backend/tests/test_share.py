@@ -140,14 +140,17 @@ def _seed_share_db(db_url: str) -> None:
         engine = make_engine(db_url)
         maker = async_sessionmaker(engine, expire_on_commit=False)
         async with maker() as session:
-            session.add(
-                models.Challenge(
-                    id=CHALLENGE_ID,
-                    name="Tiny Tagline",
-                    prompt="Write a slogan for a dragon-owned bakery.",
-                    ai_prompt_template_id="v1.0",
+            # Migration 003 loads the library, so the challenge is already there.
+            if await session.get(models.Challenge, CHALLENGE_ID) is None:
+                session.add(
+                    models.Challenge(
+                        id=CHALLENGE_ID,
+                        name="Tiny Tagline",
+                        prompt="Write a slogan for a dragon-owned bakery.",
+                        ai_prompt_template_id="v1.0",
+                    )
                 )
-            )
+                await session.commit()
             session.add(
                 models.User(id="http-user", display_name="Player_Share", guest_id="guest-share")
             )

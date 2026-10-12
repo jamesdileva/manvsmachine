@@ -203,14 +203,17 @@ def seeded_db(tmp_db_url: str) -> str:
         engine: AsyncEngine = make_engine(tmp_db_url)
         maker = async_sessionmaker(engine, expire_on_commit=False)
         async with maker() as session:
-            session.add(
-                m.Challenge(
-                    id=CHALLENGE_ID,
-                    name="Tiny Tagline",
-                    prompt="Write a slogan for a dragon-owned bakery.",
-                    ai_prompt_template_id="v1.0",
+            # Migration 003 loads the library, so the challenge is already there.
+            if await session.get(m.Challenge, CHALLENGE_ID) is None:
+                session.add(
+                    m.Challenge(
+                        id=CHALLENGE_ID,
+                        name="Tiny Tagline",
+                        prompt="Write a slogan for a dragon-owned bakery.",
+                        ai_prompt_template_id="v1.0",
+                    )
                 )
-            )
+                await session.commit()
             await session.commit()
             await _seed_user(session, "http-user", name="Player_HTTP", rating=1007.7)
             await _seed_scored_round(session, "http-user", round_id="h1", vote_correct=True)
