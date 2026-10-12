@@ -95,6 +95,13 @@ export function toWebSocketUrl(
   sessionId: string,
   token: string,
 ): string {
-  const wsBase = baseUrl.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '')
+  // A relative base (single-port release, Sprint 27) resolves against the page;
+  // absolute bases keep the configured origin (dev against :8000).
+  const wsBase = baseUrl.startsWith('http')
+    ? baseUrl.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '')
+    : new URL(baseUrl, window.location.href)
+        .toString()
+        .replace(/^http/, 'ws')
+        .replace(/\/api\/v1\/?$/, '')
   return `${wsBase}/ws/session/${sessionId}?token=${encodeURIComponent(token)}`
 }

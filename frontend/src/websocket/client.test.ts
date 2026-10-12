@@ -138,4 +138,11 @@ describe('toWebSocketUrl', () => {
       'wss://example.com/ws/session/s1?token=a%20b%2Bc',
     )
   })
+
+  it('resolves a relative base against the page (single-port release)', () => {
+    // jsdom's URL is http://localhost:5173/, so a relative base is same-origin.
+    expect(toWebSocketUrl('/api/v1', 's1', 'a.b.c')).toBe(
+      'ws://localhost:5173/ws/session/s1?token=a.b.c',
+    )
+  })
 })
