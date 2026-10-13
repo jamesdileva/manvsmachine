@@ -86,6 +86,10 @@ def main() -> int:
     if not output.is_dir():
         sys.exit(f"error: expected {output} after the build")
 
+    # One-dir datas land under _internal/, invisible to the player. The bundle
+    # root needs its own copy so the zip explains itself (extract-first!).
+    shutil.copy(ROOT / "packaging" / "README-BUNDLE.txt", output / "READ ME FIRST.txt")
+
     executable = output / ("ManVsMachine.exe" if sys.platform == "win32" else "ManVsMachine")
     size_mb = sum(f.stat().st_size for f in output.rglob("*") if f.is_file()) / 1e6
     print()

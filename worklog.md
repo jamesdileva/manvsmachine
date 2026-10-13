@@ -18,6 +18,14 @@ Entry template:
 
 ---
 
+## [2026-10-10] Post-MVP follow-up — executable never dies silently
+- Status: done
+- Plan & scope: the owner reported the bundle "flashes a terminal and doesn't open". The bundle runs fine here, so the failure is environmental — and the real defect is that a startup crash leaves no trace. Fix: the launcher now diagnoses itself.
+- Implemented: `packaging/launcher.py` gained a preflight (`_preflight`) that reports, in plain language, the three environmental failures: `_internal` missing beside the exe (running from inside an unextracted zip), port 8000 occupied, and an unwritable folder. Any startup failure (bad import, server crash) is printed, saved to `manvsmachine-crash.log` next to the exe, and held on screen. Fixed along the way: `input()` itself raised `EOFError` under a hidden/redirected console despite the `isatty()` guard, so `_hold_open()` guards the read too. Added `packaging/README-BUNDLE.txt`, copied to the bundle root as `READ ME FIRST.txt` by the build script (one-dir datas land under `_internal/`, invisible to the player — verified).
+- Verification: 7 new launcher tests (18 total); full backend suite **297 passed**; ruff/mypy clean. Rebuilt via the script and live-verified the frozen build again: UI/API/full 3-round game/share/replay all OK. Proved the diagnostics fire: with `_internal` renamed away the bootloader exits -1 instantly (Python never starts, so no in-code message is possible there — hence the README), and with the port blocked the exe prints the plain-language message and writes the crash log.
+- Notes: if the owner's copy still flashes with no message after re-extracting, the cause is below Python entirely (antivirus quarantine on extract, or a blocked DLL) — the `READ ME FIRST.txt` covers re-extraction, and a screenshot of any Windows dialog would identify it.
+
+---
 ## [2026-10-10] Post-MVP — PyInstaller double-click bundle (owner-approved)
 - Status: done
 - Plan & scope: owner asked for option B (single executable, double-click and play) from the Sprint 28 packaging write-up. PyInstaller added to Master §8 as an owner-approved build-time-only tool (same path Ollama took in Sprint 9). Files created: `packaging/launcher.py`, `packaging/manvsmachine.spec`, `scripts/build_executable.py`, `backend/tests/test_launcher.py`. Modified: `backend/app/main.py` (`MANVSMACHINE_FRONTEND_DIST` override), `backend/pyproject.toml` (`package` extra), `backend/tests/test_release.py`, `.gitignore`, README, quick-reference, docs/01 §8 + §22.

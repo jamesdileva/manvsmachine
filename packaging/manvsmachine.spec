@@ -35,6 +35,10 @@ datas = [
     (str(FRONTEND / "dist"), "frontend/dist"),
 ]
 
+# Note: one-dir datas land under _internal/, not the bundle root — so the
+# player-facing README is copied to the root by scripts/build_executable.py
+# after the build instead of being collected here.
+
 # uvicorn's loops/protocols are imported lazily by string; websockets is the
 # WebSocket server; alembic's env is loaded as a module, not discovered.
 hiddenimports = [
