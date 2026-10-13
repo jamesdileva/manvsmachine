@@ -162,21 +162,6 @@ def test_preflight_catches_a_missing_internal_folder(
     assert "Extract All" in problem
 
 
-def test_preflight_catches_an_occupied_port(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    (tmp_path / "_internal").mkdir()
-    _frozen_in(tmp_path, monkeypatch)
-    blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    blocker.bind((launcher.HOST, launcher.PORT))
-    try:
-        problem = launcher._preflight()
-    finally:
-        blocker.close()
-    assert problem is not None
-    assert "already in use" in problem
-
-
 def test_preflight_catches_an_unwritable_folder(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -190,19 +175,48 @@ def test_preflight_catches_an_unwritable_folder(
     assert "not writable" in problem
 
 
-def test_preflight_checks_in_order_intact_then_port_then_writable(
+def test_occupied_default_port_is_not_fatal(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A missing _internal is reported even when the port is also taken."""
-    _frozen_in(tmp_path, monkeypatch)  # no _internal here
+    """Port 8000 busy just means the game picks another port (see below)."""
+    (tmp_path / "_internal").mkdir()
+    _frozen_in(tmp_path, monkeypatch)
     blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     blocker.bind((launcher.HOST, launcher.PORT))
     try:
         problem = launcher._preflight()
     finally:
         blocker.close()
-    assert problem is not None
-    assert "_internal" in problem
+    assert problem is None
+
+
+def test_find_free_port_prefers_8000() -> None:
+    assert launcher._find_free_port() == launcher.PORT
+
+
+def test_find_free_port_skips_busy_ports() -> None:
+    blockers = []
+    try:
+        for port in (launcher.PORT, launcher.PORT + 1):
+            blocker = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            blocker.bind((launcher.HOST, port))
+            blockers.append(blocker)
+        assert launcher._find_free_port() == launcher.PORT + 2
+    finally:
+        for blocker in blockers:
+            blocker.close()
+
+
+def test_find_free_port_gives_up_gracefully(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    taken = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    taken.bind((launcher.HOST, launcher.PORT))
+    try:
+        # Only port 8000 is offered and it is taken: no port found.
+        assert launcher._find_free_port(first=launcher.PORT, tries=1) is None
+    finally:
+        taken.close()
 
 
 def test_fatal_report_returns_nonzero_and_mentions_the_log(

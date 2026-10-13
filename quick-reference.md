@@ -86,8 +86,10 @@ python scripts/build_executable.py                 # uses the existing frontend 
 python scripts/build_executable.py --rebuild-ui    # rebuild the frontend first
 ```
 
-→ `dist/ManVsMachine/` (~38 MB). Run `ManVsMachine.exe` (Windows) or
+→ `dist/ManVsMachine/` (~40 MB). Run `ManVsMachine.exe` (Windows) or
 `ManVsMachine` (Linux/macOS) — no Python or Node needed. Zip and share.
+A second copy picks the next free port by itself (8001, 8002, …) and tells
+you which one, so double-clicking twice just works.
 PyInstaller is a **build-time-only** dependency (`pip install -e "backend[package]"`);
 the game itself still runs on plain FastAPI + SQLite + the Vite build.
 

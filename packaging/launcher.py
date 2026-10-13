@@ -72,8 +72,8 @@ def _bundle_database() -> None:
     )
 
 
-def _open_browser() -> None:
-    threading.Timer(1.5, lambda: webbrowser.open(URL)).start()
+def _open_browser(url: str) -> None:
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
 
 
 def _executable_dir() -> Path:
@@ -99,16 +99,19 @@ def _check_bundle_intact(executable_dir: Path) -> str | None:
     return None
 
 
-def _check_port_free() -> str | None:
-    """Port 8000 must be free; otherwise the server cannot start."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-        try:
-            probe.bind((HOST, PORT))
-        except OSError:
-            return (
-                f"Port {PORT} is already in use — another copy of the game (or\n"
-                "another app) is running. Close it and try again."
-            )
+def _find_free_port(first: int = PORT, tries: int = 10) -> int | None:
+    """The first free port from `first` upward (double-clicking twice just works).
+
+    Everything the UI needs is relative (`/api/v1`, and the socket URL resolves
+    against the page), so any port serves the full game with zero extra config.
+    """
+    for port in range(first, first + tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            try:
+                probe.bind((HOST, port))
+            except OSError:
+                continue
+            return port
     return None
 
 
@@ -133,10 +136,8 @@ def _preflight() -> str | None:
     if not getattr(sys, "frozen", False):
         return None
     executable_dir = _executable_dir()
-    return (
-        _check_bundle_intact(executable_dir)
-        or _check_port_free()
-        or _check_directory_writable(executable_dir)
+    return _check_bundle_intact(executable_dir) or _check_directory_writable(
+        executable_dir
     )
 
 
@@ -177,6 +178,16 @@ def main() -> int:
     _point_at_bundled_frontend()
     _bundle_database()
 
+    port = _find_free_port()
+    if port is None:
+        return _report_fatal(
+            "No free port was found near 8000 — close other copies of the game\n"
+            "(or other apps using those ports) and try again."
+        )
+    url = f"http://{HOST}:{port}"
+    if port != PORT:
+        print(f"Port {PORT} was busy, so the game is using port {port} instead.")
+
     try:
         import uvicorn
 
@@ -187,12 +198,12 @@ def main() -> int:
             "and try again. Technical details:\n\n" + traceback.format_exc()
         )
 
-    print(f"Man vs. Machine — {URL}")
+    print(f"Man vs. Machine — {url}")
     print("Press Ctrl+C to stop.")
 
-    _open_browser()
+    _open_browser(url)
     try:
-        uvicorn.run(app, host=HOST, port=PORT, log_level="info")
+        uvicorn.run(app, host=HOST, port=port, log_level="info")
     except Exception:  # noqa: BLE001 — e.g. the port was taken mid-start
         return _report_fatal(
             "The server stopped unexpectedly. Technical details:\n\n"

@@ -68,7 +68,7 @@ No AI API keys are required: without keys the game runs on the built-in StubProv
 |-----|---------|-----------|
 | Dev (hot reload) | `.venv/Scripts/python scripts/dev.py` | http://localhost:5173 |
 | One port (release) | `bash frontend/scripts/build.sh && bash backend/scripts/run.sh` | http://127.0.0.1:8000 |
-| **Double-click bundle** | `python scripts/build_executable.py` | run `dist/ManVsMachine/ManVsMachine.exe` |
+| **Double-click bundle** | `python scripts/build_executable.py` | run `dist/ManVsMachine/ManVsMachine.exe` (a second copy picks the next free port by itself) |
 
 The bundle is ~38 MB and needs **no Python and no Node** on the target machine —
 the database, the 25-challenge library, the migrations, and the built UI are all

@@ -16,6 +16,7 @@ Notes
 - If the game can't start, it explains why on screen and saves the details
   to manvsmachine-crash.log next to the exe — include that file if you ask
   for help.
-- If port 8000 is busy (another copy running?), close the other copy first.
+- If port 8000 is busy (another copy running?), the game picks the next free
+  port by itself and tells you which one in the window.
 - No Python, Node, Docker, or internet needed. AI opponents come from the
   built-in library unless you configure real provider keys (see README).
