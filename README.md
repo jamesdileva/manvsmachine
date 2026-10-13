@@ -26,7 +26,7 @@ A session is 3 rounds (~2 minutes), Wordle-style. The game is not "can you out-w
 - WebSocket game channel with SQLite-authoritative state (reconnect-safe)
 - React UI: session flow, leaderboard, profile, settings (light/dark), share cards
 - AI provider fallback chain (OpenAI → Anthropic → Ollama → Stub), content filter + prompt audit
-- **402 tests passing** (277 backend + 156 frontend) · ruff + mypy + tsc + eslint clean
+- **434 tests passing** (277 backend + 157 frontend) · ruff + mypy + tsc + eslint clean
 
 ## Quickstart
 

@@ -30,12 +30,26 @@ cd frontend && npm run dev
 
 | URL | What |
 |-----|------|
-| http://127.0.0.1:8000 | Backend health check (`{"status":"ok"}`) |
+| http://localhost:5173 | The game (Vite dev server) |
+| http://127.0.0.1:8000/health | Backend health check (`{"status":"ok"}`) |
 | http://127.0.0.1:8000/docs | Swagger UI (interactive API docs) |
-| http://localhost:5173 | Frontend (Vite) |
 
-> **Port note:** if your "FLOOD" app is running, it owns 5173 and Vite auto-increments to **5174** —
+> **Port note:** if another app is running, it may own 5173 and Vite auto-increments to **5174** —
 > check the `scripts/dev.py` console output for the actual URL. Backend CORS already allows 5173–5175.
+
+## Run (one-port release)
+
+```bash
+bash frontend/scripts/build.sh   # vite build → frontend/dist
+bash backend/scripts/run.sh      # uvicorn serves API + WebSocket + the built UI
+```
+
+| URL | What |
+|-----|------|
+| http://127.0.0.1:8000 | The game — API, WebSocket, and UI on one port |
+
+`frontend/.env.production` sets `VITE_API_BASE_URL=/api/v1`, so the built UI is
+same-origin with the backend (no CORS, one port).
 
 ## Tests
 
@@ -43,11 +57,14 @@ cd frontend && npm run dev
 # Backend (from backend/)
 ../.venv/Scripts/python -m pytest -v                    # all tests
 ../.venv/Scripts/python -m pytest -v --cov=app          # with coverage (target >= 80% new code)
-../.venv/Scripts/python -m pytest tests/test_e2e.py -v  # E2E, from Sprint 24 (StubProvider, no API keys)
+../.venv/Scripts/python -m pytest tests/test_e2e.py -v  # E2E (StubProvider, no API keys)
 
-# Frontend (from frontend/) — Vitest, from Sprint 15
+# Frontend (from frontend/) — Vitest
 npm run test         # or: npx vitest run
 ```
+
+Final suite: **277 backend + 157 frontend tests** green. CI runs the same checks
+on every push (`.github/workflows/ci.yml`).
 
 ## Lint & type checks
 
@@ -58,7 +75,8 @@ npm run test         # or: npx vitest run
 
 # Frontend (from frontend/)
 npx tsc --noEmit
-npx eslint src/        # ESLint config arrives in Sprint 15
+npx eslint src/
+npx prettier --check "src/**/*.{ts,tsx}"
 ```
 
 ## Database (SQLite)

@@ -18,6 +18,21 @@ Entry template:
 
 ---
 
+## [2026-10-10] Sprint 28 — Documentation Finalization & Project Wrap-up
+- Status: done
+- Plan & scope: docs/03_Sprint_Plan.md Sprint 28 — no code changes. Files modified: all five docs + AGENTS.md (final version/status, changelog entries, accurate cross-references).
+- Implemented:
+  - **Master Architecture (§22)** — changelog extended 1.16 → 1.23 covering Sprints 21-27, including the bugs and doc conflicts found along the way (WebSocketManager loop-bound lock, the missing §2.5 profile endpoints, PIL vs §8's html2canvas, migration 003's fixture collisions). §21's E2E flow rewritten to point at the 13-step implementation; Appendix A expanded from 8 to the full endpoint list (incl. `PUT /profile`, `GET /share/s/{id}`, `GET /health`, release-mode `/`); Appendix B corrected (local LLM and result-card images are **not** Phase 5 — they shipped in the MVP; 25 challenge templates, not 20); §8's stack table annotated where the realized stack differed from the plan (native WebSocket instead of Socket.IO Client, Chart.js installed, html2canvas not installed).
+  - **Implementation Guide** — status/version final; §2.6 documents the full share response (`share_image` base64) + `GET /share/s/{session_id}` and the stdlib-PNG rationale; the stale "the vote endpoint arrives with VotingService in Sprint 11" note corrected; new "Release mode" section (static serving, SPA fallback, reserved prefixes, per-request dist resolution, `.env.production`); §7.2 hooks table gained `useSettings`; §7.3's WS event block corrected to the real camelCase wire payloads (it showed snake_case, which never matched the server); §8 pages table corrected to the repo's lowercase filenames and gained NotFound + the `/s/{id}` route + the RequireAuth note; §9.1 components gained `ShareButton`/`ThemeProvider`; §12 rewritten with the final test inventory (277 backend, 157 frontend) and accurate fixture paths (the stub pools and production JSON live in `app/data/`, not the test fixtures).
+  - **Doc 05** — added a challenge-id table so each of the 25 entries maps to its JSON file and StubProvider pool; verified all 25 titles/order match `backend/app/data/challenge_library/` and that the stub pools match one-for-one.
+  - **AGENTS.md (v1.3)** — test fixtures corrected, E2E description extended to include share + replay, the module-scoped-TestClient rule documented, final suite size recorded, and Development Commands gained the release-mode scripts, the library-load script, `[dev]` extras, and the `/health` endpoint note.
+  - **quick-reference.md** — health URL corrected to `/health`, stale "arrives in Sprint 15/24" notes removed, new one-port release section, prettier check added.
+  - Cross-references verified programmatically: 0 broken markdown links across all six docs; every `§N` section reference resolves to a real heading.
+- Verification: doc-only change, so no tests re-run — but the numbers recorded in the docs were taken from actual runs earlier in this session (277 backend / 157 frontend, ruff/mypy/tsc/eslint/prettier clean). Verified the doc-05 id table against the real library and stub pools with a script.
+- Commits: (this entry's commit — Sprint 28: documentation finalization + project wrap-up)
+- Notes: this completes the MVP — all 28 sprints shipped. Two cross-reference bugs worth knowing that only this pass caught: the Implementation Guide's WebSocket event table documented snake_case payload keys that never matched the server (the real wire format is camelCase, as the Sprint 19 changelog had already noted), and Master's Appendix B listed Local LLM support as Phase 5 future work when Ollama shipped in Sprint 9.
+
+---
 ## [2026-10-10] Sprint 27 — Final Polish & Local Release Config
 - Status: done
 - Plan & scope: docs/03_Sprint_Plan.md Sprint 27 — single-port release mode (serve the built frontend from FastAPI), CI workflow, env config, README quickstart. Files created: `.github/workflows/ci.yml`, `backend/scripts/run.sh`, `frontend/scripts/build.sh`, `frontend/.env.production`, `backend/tests/test_release.py`. Modified: `backend/app/main.py`, `README.md`, `backend/tests/test_health.py`, `frontend/src/websocket/client.ts` (+test). Docker/Nginx deployment remains post-MVP per the plan.

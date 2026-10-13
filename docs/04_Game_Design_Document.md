@@ -1,7 +1,7 @@
 # Man vs. Machine — Game Design Document (GDD)
 
-> **Version:** 1.0
-> **Status:** Draft — Sprint 0 (Pre-MVP)
+> **Version:** 1.27
+> **Status:** Final — MVP complete (Sprints 0–27 shipped)
 > **Audience:** Game designers, developers, AI coding agents, product stakeholders
 > **Related:** See `docs/01_Master_Architecture.md` for architecture and `docs/05_Micro_Challenge_Library.md` for challenge templates.
 

@@ -1,7 +1,7 @@
 # AGENTS.md — Man vs. Machine Project Rules
 
 > **Version:** 1.2
-> **Status:** Draft — Sprint 0 (Pre-MVP)
+> **Status:** Final — MVP complete (Sprints 0–27 shipped)
 > **Purpose:** Operating contract for AI coding agents working on Man vs. Machine
 > **Read:** `docs/01_Master_Architecture.md` fully before starting any work.
 
@@ -87,13 +87,16 @@ Every sprint follows the same loop: **plan → scope → implement → verify �
 - Every sprint must have tests written or updated
 - Backend: `pytest` with `pytest-asyncio`, coverage >= 80% for new code
 - Frontend: `vitest`, coverage >= 75% for new components
-- E2E tests: Full flow from session start through 3 rounds to session summary, using `StubProvider` (no real AI API keys needed)
+- E2E tests: Full flow from session start through 3 rounds to session summary, share result, and replay link, using `StubProvider` (no real AI API keys needed) — `tests/test_e2e.py` walks all 13 steps of Implementation Guide §12.4
 - All tests must pass before a sprint is marked "Done"
 - Test fixtures for challenge definitions live in `backend/tests/fixtures/challenges/`
-- Test fixtures for stub entries live in `backend/tests/fixtures/stub_entries/`
+- Test fixtures for share/sanitization samples live in `backend/tests/fixtures/ai_responses/`
+- The StubProvider's entry pools and the production challenge JSON live in `backend/app/data/` (not the test fixtures)
 - Run tests with: `cd backend && pytest -v --cov=app`
 - Run frontend tests with: `cd frontend && vitest run`
 - E2E test flow: start backend with `STUB_PROVIDER_ONLY=true`, run `pytest tests/test_e2e.py -v`
+- The E2E suite shares ONE module-scoped `TestClient`: each TestClient runs its own event loop in its own thread, and the app's module-level `WebSocketManager` holds an `asyncio.Lock` bound to the first loop that awaits it, so several TestClients in one process deadlock later broadcasts
+- Final suite size: 277 backend + 157 frontend tests
 
 ---
 
@@ -161,7 +164,7 @@ All docs follow the numbering:
 ```bash
 # Backend
 cd backend
-pip install -e .
+pip install -e ".[dev]"
 uvicorn app.main:app --reload  # dev server on 127.0.0.1:8000
 
 # Frontend
@@ -171,6 +174,13 @@ npm run dev  # Vite dev server on 127.0.0.1:5173
 
 # Full stack (local, no Docker)
 python scripts/dev.py  # backend on 127.0.0.1:8000 + frontend on 5173, SQLite auto-initialized
+
+# One-port release mode (serve the built frontend from the backend)
+bash frontend/scripts/build.sh   # vite build → frontend/dist
+bash backend/scripts/run.sh     # uvicorn on 127.0.0.1:8000 serves API + WS + UI
+
+# Challenge library load (idempotent; startup already syncs it)
+python scripts/load_challenges.py
 
 # Tests
 cd backend && pytest -v --cov=app
@@ -183,3 +193,7 @@ cd backend && STUB_PROVIDER_ONLY=true pytest tests/test_e2e.py -v
 cd backend && ruff check app/ && mypy app/
 cd frontend && npx tsc --noEmit && npx eslint src/
 ```
+
+`GET /health` is the health check (`/` serves the built frontend in release
+mode). `scripts/*.sh` are bash scripts — use Git Bash or WSL on Windows;
+`scripts/dev.py` and `scripts/load_challenges.py` are cross-platform Python.

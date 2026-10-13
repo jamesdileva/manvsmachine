@@ -1,7 +1,7 @@
 # Man vs. Machine — Master Architecture
 
-> **Version:** 1.0
-> **Status:** Draft — Sprint 0 (Pre-MVP)
+> **Version:** 1.27
+> **Status:** Final — MVP complete (Sprints 0–27 shipped)
 > **Audience:** Developers, AI coding agents, project maintainers
 > **Related:** See `docs/04_Game_Design_Document.md` for gameplay experience and `docs/02_Implementation_Guide.md` for technical reference.
 
@@ -355,10 +355,10 @@ The MVP is complete when a user can:
 | Axios | 1.6+ | HTTP client |
 | shadcn/ui | 0.6+ | Component library |
 | Tailwind CSS | 3.4+ | Styling |
-| Socket.IO Client | 4.7+ | WebSocket client |
-| Chart.js | 4.4+ | Leaderboard charts |
+| Socket.IO Client | 4.7+ | WebSocket client — *realized as the browser's native WebSocket; the backend speaks raw JSON frames, so no Socket.IO dependency was installed* |
+| Chart.js | 4.4+ | Leaderboard charts — *installed in Sprint 22 for the profile humanity trend* |
 | Vitest | 1.2+ | Frontend testing |
-| html2canvas | 1.4+ | Result card image generation |
+| html2canvas | 1.4+ | Result card image generation (client-side) — *not installed; the MVP card is rasterised server-side with stdlib `zlib`/`struct` (Sprint 25)* |
 
 ### Infrastructure
 
@@ -1260,16 +1260,14 @@ These guidelines prevent architectural drift and ensure the web-first, micro-cha
 
 ### E2E Test Flow
 
-1.  Start the backend with StubProvider (no real AI API keys needed)
-2.  Create a session with 3 challenge definitions
-3.  POST a human entry via WebSocket
-4.  Verify AI entry is generated (from stub pool)
-5.  Verify entries are anonymized (A/B labels)
-6.  Submit a vote
-7.  Verify reveal shows correct attribution
-8.  Verify score is calculated and rating updated
-9.  Verify streak is tracked
-10. Verify session summary is generated
+`backend/tests/test_e2e.py` walks all 13 steps of Implementation Guide §12.4
+(StubProvider, no API keys): start backend → session start (3 challenges) →
+WebSocket connect → ROUND_START → submit entry → AI_RESPONSE_READY
+(anonymized A/B, own entry unlabelled) → VOTE/VOTE_CONFIRMED → REVEAL
+(attribution + humanity) → ROUND_SCORED (score + rating) → round 3 →
+SESSION_END (summary) → leaderboard + profile → share result + replay link.
+
+    pytest tests/test_e2e.py -v
 
 ---
 
@@ -1293,6 +1291,14 @@ These guidelines prevent architectural drift and ensure the web-first, micro-cha
 | 1.13 | 2026-10-08 | Sprint 18 implemented per spec. ChallengeView/Timer/EntryInput/StreakBadge/RatingDisplay with useTimer (deadline-based countdown, urgency states) and useChallenges (daily lookup, definitions, server validation). A client-side `src/lib/constraints.ts` mirrors the backend ConstraintEngine for live feedback on the browser-checkable constraint types; the server remains authoritative on submission, and heuristic constraints (must_rhyme, no_adjectives) stay backend-only. Vitest runs with `fileParallelism: false` because test files share the module-level API client. |
 | 1.14 | 2026-10-08 | Sprint 19 implemented per spec. WebSocket client layer: typed events (`websocket/events.ts`), `SessionSocket` (`websocket/client.ts`) with an injectable socket factory, and `useVoting` owning the connection lifecycle and event→state mapping. VotingContext (entries/vote/reveal) and ScoringContext (score/ratingChange/streak/summary) share one channel via nested providers. VotingScreen shows anonymized A/B entries with vote buttons, no origin hints, and a 10-second soft-nudge window that never locks voting. Note: the sprint text's `VOTE_SUBMITTED` event name drifted from the implementation — the server (Sprint 14) accepts `VOTE`, and the client matches it. |
 | 1.15 | 2026-10-08 | Sprint 20 implemented per spec. RevealScreen (attribution, both entries labeled yours/AI, humanity 0-100 bars with clamping + progressbar a11y, explanation), ScoreAnimation (count-up to the total with the base/time/streak breakdown), SessionSummary (totals + per-round breakdown + play again), `useScoring`, and `websocket/hooks.ts` (`useRoundState` phase derivation, `useSessionEvents` session lifecycle). The Session page renders the full loop: writing → voting → reveal+score → summary. The REVEAL wire event does not carry entry text, so the client merges the round's entries into the reveal payload for display. |
+| 1.16 | 2026-10-10 | Sprint 21 implemented per spec. SessionContext round state machine (`idle → writing → voting → reveal_ai → score → complete`) + `useSession` loop orchestration: optimistic entry into `writing` from the session-start REST response, one-shot 2.5s score dwell with a per-round-id stale-score guard (a finished round's leftover score can no longer re-enter the state machine), round-clock auto-submit at expiry, and per-state rendering. 110 frontend tests (SessionContext + SessionClock suites added; fake timers limited to Date/setTimeout/setInterval so the round clock does not starve React's act queue). |
+| 1.17 | 2026-10-10 | Sprint 22 implemented per spec, **plus a backend gap it exposed**. Leaderboard + Profile pages: `LeaderboardTable` (sortable rank/player/score-or-rating/accuracy, nulls last, aria-sort), `useLeaderboard`, Daily/All-time tabs, `HumanityMeter` (0-100 clamped progressbar), Profile page (rating/rounds/accuracy/streaks + Chart.js humanity trend + display-name rename), `StreakBadge` in the nav. The sprint said "Backend Changes: None", but Implementation Guide §2.5's `GET/PUT /profile` endpoints never existed (Sprint 16's client had never been verified live): added `app/api/v1/profile.py`, `ProfileService`, `ScoringRepository.get_recent_humanity_scores`. `chart.js@4.4.0` added to §8's realized stack (sanctioned there). |
+| 1.18 | 2026-10-10 | Sprint 23 implemented per spec. Settings page: AI provider dropdown (OpenAI/Anthropic/Stub), dark-mode switch, sound-effects switch. `useSettings` + `SettingsProvider` persist `{ theme, aiProvider, soundEnabled }` to localStorage with validated reads + corrupt-JSON fallback; `ThemeProvider` toggles the `dark` class on `<html>` (Tailwind `darkMode:['class']` and the globals.css `.dark` tokens shipped in Sprint 15 but had no toggler until now). The title's "Content Filter Integration" needed no work — ContentFilter has been wired into AIService since Sprints 8/10. |
+| 1.19 | 2026-10-10 | Sprint 24 implemented per spec. `tests/test_e2e.py` walks Implementation Guide §12.4's full flow (all 13 steps, step 13 added once Sprint 25 landed) over the real HTTP + WebSocket stack with StubProvider: guest → session start → connect → submit → anonymized A/B → vote → reveal → score → summary → leaderboard → profile → share + replay. Added `tests/conftest.py` (shared throwaway-DB / StubProvider client + fixture loaders) and `tests/fixtures/{challenges,ai_responses}/`. **Suite-stall bug found and fixed test-side**: three TestClients in one process hung — `app.websocket.manager` is a module-level singleton whose `asyncio.Lock` binds to the first event loop that awaits it while each TestClient runs its own loop in its own thread, so once that loop dies later broadcasts block forever. The E2E suite now shares ONE module-scoped TestClient (no backend change; cut the suite ~2.4s → ~1.3s). Worth a future sprint: make the manager loop-safe with a lazy lock. |
+| 1.20 | 2026-10-10 | Sprint 25 implemented per spec. ShareService (`generate_share_text` in the documented format, `create_share_link`, `generate_share_image`), `POST /api/v1/share/result` (text + link + base64 PNG; 400 unfinished, 404 foreign, 401 unauth) and `GET /api/v1/share/s/{id}` (resolves a shared link to the result text + attributed rounds). Frontend `useShare` (post/copy/download), `ShareButton` (Copy + Download + link dialog), `ResultCard` (score, accuracy, averaged humanity meters) wired onto the Session page. **Doc conflict resolved**: the sprint plan said "PNG via PIL", but §8 sanctions `html2canvas` for result-card images and does not list Pillow (also not installed) — the server-side card is rasterised with the standard library only (`zlib` + `struct` + a compact 5x7 bitmap font), so the documented backend contract holds with no new native dependency. Shared links are unobfuscated session ids and auth-gated; a `shares` table is post-MVP. |
+| 1.21 | 2026-10-10 | Sprint 26 implemented per spec. `app/scripts/challenge_data.py` is the single load path (`library_ids`, `read_definitions`, `load_challenge_library`) shared by the data migration, the standalone script, and the app's startup `sync_library_to_db`, so all three agree on what "loaded" means. Alembic `003_load_challenges` inserts the 25 definitions idempotently (the plan named 002, which the password_hash migration already owned). `scripts/load_challenges.py` sits at the repo-root script dir where `dev.py` already lives (the plan said `backend/scripts/`). `tests/test_challenge_data.py` covers the acceptance criteria incl. 25 consecutive days covering all 25 challenges exactly once. Migration 003 pre-populates `challenges`, which broke the hand-seeded fixtures in `test_share.py`/`test_profile.py` (PK collision) — both now check for an existing row first. |
+| 1.22 | 2026-10-10 | Sprint 27 implemented per spec (**final build sprint — MVP complete**). Single-port release mode: `main.py` serves the built frontend on the API port, with `/` and any non-reserved browser path returning index.html (SPA fallback), build files served from `frontend/dist`, a missing `/assets/*` bundle 404ing rather than silently returning the shell, and the `api`/`ws`/`docs`/`redoc`/`openapi.json`/`health` prefixes never claimed so a typo'd API path returns a JSON 404. `FRONTEND_DIST_DIR` is resolved per request (no import-time snapshot). The health check moved `/` → `/health` so `/` can serve the app. Frontend: `.env.production` sets `VITE_API_BASE_URL=/api/v1` (same-origin release) and `toWebSocketUrl` resolves a relative base against `window.location`, picking ws/wss from the page protocol. Added `.github/workflows/ci.yml` (ruff, mypy, pytest + tsc, eslint, prettier, vitest, build), `backend/scripts/run.sh`, `frontend/scripts/build.sh`. Docker/Nginx production deployment remains post-MVP. |
+| 1.23 | 2026-10-10 | Sprint 28 (documentation finalization) — all five docs + AGENTS.md updated to final status/version: Master §22 changelog extended through the MVP, Implementation Guide refreshed (share/replay endpoints, static release serving, frontend env handling, hooks/components/pages/test tables, camelCase WS payload correction), README rewritten for the finished MVP. No code changes. Final state: 277 backend + 157 frontend tests green; ruff/mypy/tsc/eslint/prettier clean. |
 
 ---
 
@@ -1303,23 +1309,41 @@ Appendix A: API Reference (Summary)
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/api/v1/auth/guest` | Create/get guest session |
+| POST | `/api/v1/auth/register` | Email/password account |
 | POST | `/api/v1/auth/login` | Login with email/password |
+| GET | `/api/v1/auth/me` | Protected profile for the token holder |
 | GET | `/api/v1/challenges/daily` | Get today's daily challenge |
 | GET | `/api/v1/challenges/{id}` | Get a specific challenge definition |
-| GET | `/api/v1/leaderboard/daily` | Get today's leaderboard |
-| GET | `/api/v1/profile` | Get user profile + stats |
-| POST | `/api/v1/share/result` | Generate a shareable result card |
+| POST | `/api/v1/challenges/validate` | Pre-submission constraint check |
+| POST | `/api/v1/session/start` | Start a session (creates round 1) |
+| GET | `/api/v1/session/{id}` | Session state |
+| GET | `/api/v1/session/{id}/summary` | Totals, accuracy, per-round breakdown |
+| POST | `/api/v1/session/{id}/next` | Advance to the next round / complete |
+| POST | `/api/v1/session/{id}/rounds/{round_id}/entry` | Submit a round entry (REST path) |
+| POST | `/api/v1/voting/submit-entry` | Stateless practice: validate + AI generation |
+| POST | `/api/v1/voting/vote` | Record a vote; returns the reveal + score |
+| GET | `/api/v1/leaderboard/daily` | Today's board by score |
+| GET | `/api/v1/leaderboard/all-time` | All-time board by Detection Rating |
+| GET | `/api/v1/profile` | Profile + stats + recent humanity |
+| PUT | `/api/v1/profile` | Update display name |
+| POST | `/api/v1/share/result` | Text + PNG result card for a finished session |
+| GET | `/api/v1/share/s/{session_id}` | Resolve a shared result link |
 | WS | `/ws/session/{session_id}` | WebSocket for real-time round flow |
+| GET | `/health` | Health check |
+| GET | `/` (and non-API paths) | Built frontend in release mode (SPA fallback) |
 
 Appendix B: Future Roadmap
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| MVP | Quick Text + Bluff mode, local web app (SQLite), 20 challenge templates | Current |
-| Phase 2 | Weekly challenges, 100+ templates, result card images | Future |
-| Phase 3 | True multiplayer, Visual/Build/Explain challenge types | Future |
+| MVP | Quick Text mode, local web app (SQLite), 25 challenge templates | **Shipped** (Sprint 27) |
+| Phase 2 | Weekly challenges, 100+ templates, richer result-card imagery (client-side `html2canvas`) | Future |
+| Phase 3 | True multiplayer (2+ humans + voting), Visual/Build/Explain challenge types | Future |
 | Phase 4 | Tournaments, Creator mode, Battle Pass | Future |
-| Phase 5 | Native mobile apps, Local LLM support | Future |
+| Phase 5 | Native mobile apps, hosted deployment (PostgreSQL/Redis/Nginx) | Future |
+
+Local LLM support (Ollama) and result-card image generation are **not** Phase 5
+items — both shipped inside the MVP (Sprint 9 and Sprint 25 respectively).
 
 ---
 

@@ -1,7 +1,7 @@
 # Man vs. Machine — Implementation Guide
 
-> **Version:** 1.0
-> **Status:** Draft — Sprint 0 (Pre-MVP)
+> **Version:** 1.27
+> **Status:** Final — MVP complete (Sprints 0–27 shipped)
 > **Audience:** Developers, AI coding agents
 > **Related:** See `docs/01_Master_Architecture.md` for architecture overview and `docs/03_Sprint_Plan.md` for the sprint roadmap.
 
@@ -519,13 +519,29 @@ Generate a shareable result card for a completed session.
   ```json
   {
     "share_text": "I scored 275 on today's Man vs. Machine daily challenge! Can you beat my accuracy? #ManVsMachine",
-    "share_url": "/s/abc123"  # local route to view the result
+    "share_url": "/s/abc123",
+    "share_image": "<base64 PNG, null when format=text>"
   }
   ```
+- 400 when the session has not finished, 404 for a session owned by someone else, 401 without a token.
+
+**GET `/share/s/{session_id}`**
+
+Resolves a shared link: the result text plus the attributed rounds. Any
+signed-in player can open it (it exists to be shown to other players), so it
+reads through the session owner's identity.
+
+- **Response (200):** `{ share_text, share_url, summary: { session_id, type, total_score, accuracy, rounds: [{ round_number, challenge_id, human_entry, ai_entry, vote, correct, score, humanity_human, humanity_ai }] } }`
+- 404 for an unknown session, 401 without a token.
+
+The PNG card is rasterised server-side with the standard library (`zlib` +
+`struct` against a compact 5x7 bitmap font) — Master §8 sanctions `html2canvas`
+for client-side capture, but Pillow is not in the stack, and the documented
+`generate_share_image` backend contract holds without a native dependency.
 
 ### 2.7 Voting
 
-**POST `/voting/submit-entry`** (Sprint 10; the vote endpoint arrives with VotingService in Sprint 11)
+**POST `/voting/submit-entry`** (the stateless practice path; the live game loop goes through the WebSocket)
 
 Validate a human entry and trigger AI generation. Hard violations block the
 submission; soft violations are reported but allowed. The prompt + both
@@ -1116,7 +1132,8 @@ interface AuthContextType {
 | `useAuth` | `hooks/useAuth.ts` | Auth state, login/register/guest |
 | `useChallenges` | `hooks/useChallenges.ts` | Fetch challenge definitions |
 | `useScoring` | `hooks/useScoring.ts` | Score display, rating changes |
-| `useShare` | `hooks/useShare.ts` | Share result generation |
+| `useShare` | `hooks/useShare.ts` | Share result generation, clipboard copy, PNG download |
+| `useSettings` | `hooks/useSettings.tsx` | Theme / AI provider / sound, persisted to localStorage |
 
 ### 7.3 WebSocket Hooks
 
@@ -1127,15 +1144,16 @@ interface AuthContextType {
 | `useSessionEvents` | `websocket/hooks.ts` | Subscribes to SESSION_STARTED, SESSION_END |
 
 ```typescript
-// Core WebSocket event types
-type WSEvent = 
-  | { type: 'SESSION_STARTED'; session_id: string; rounds: number; challenges: ChallengeBrief[] }
-  | { type: 'ROUND_START'; round_id: string; round_number: number; challenge: ChallengeDefinition; time_limit_seconds: number }
-  | { type: 'AI_RESPONSE_READY'; round_id: string; entries: { A: string; B: string } }
-  | { type: 'REVEAL'; round_id: string; human_was: 'A' | 'B'; humanity_human: number; humanity_ai: number; explanation: string }
-  | { type: 'ROUND_SCORED'; round_id: string; score: RoundScore; rating_change: number; streak_update: StreakUpdate }
-  | { type: 'SESSION_END'; session_id: string; summary: SessionSummary }
-  | { type: 'ERROR'; code: string; message: string };
+// Core WebSocket event types (payloads are camelCase on the wire)
+type WSEvent =
+  | { type: 'SESSION_STARTED'; data: { sessionId: string; rounds: number; roundsPlayed: number; completed: boolean; challenges: ChallengeBrief[] } }
+  | { type: 'ROUND_START'; data: { roundId: string; roundNumber: number; roundsTotal: number; challenge: ChallengeBrief; timeLimitSeconds: number; state: string } }
+  | { type: 'AI_RESPONSE_READY'; data: { roundId: string; entries: { A: string; B: string } } }
+  | { type: 'REVEAL'; data: { roundId: string; humanWas: 'A' | 'B'; aiWas: 'A' | 'B'; vote: 'A' | 'B'; voteCorrect: boolean; humanityHuman: number; humanityAI: number; explanation: string } }
+  | { type: 'ROUND_SCORED'; data: { roundId: string; score: { base: number; timeBonus: number; streakBonus: number; total: number }; ratingChange: number; streakUpdate: number } }
+  | { type: 'SESSION_END'; data: { sessionId: string; summary: SessionSummaryResponse } }
+  | { type: 'VOTE_CONFIRMED'; data: { roundId: string; vote: 'A' | 'B' } }
+  | { type: 'ERROR'; data: { code: string; message: string } };
 ```
 
 ---
@@ -1144,26 +1162,54 @@ type WSEvent =
 
 | Page | File | Purpose |
 |------|------|---------|
-| `Home` | `pages/Home.tsx` | Daily challenge prompt, streak indicator, leaderboard preview, practice button |
-| `Session` | `pages/Session.tsx` | Full 3-round session flow: challenge → write → vote → reveal → score → next |
-| `Challenge` | `pages/Challenge.tsx` | Single challenge view (for practice mode, standalone) |
-| `Leaderboard` | `pages/Leaderboard.tsx` | Daily and all-time leaderboards |
-| `Profile` | `pages/Profile.tsx` | User stats, detection rating, streak history, humanity score trends |
-| `Auth` | `pages/Auth.tsx` | Guest login, email/password login/register |
-| `Settings` | `pages/Settings.tsx` | Theme, AI provider selection (stub/local), sound toggle |
+| `Home` | `pages/home.tsx` | Landing page, play-the-daily CTA, nav |
+| `Session` | `pages/session.tsx` | Full 3-round session flow: challenge → write → vote → reveal → score → summary + result card |
+| `Challenge` | `pages/challenge.tsx` | Single challenge view (standalone practice path) |
+| `Leaderboard` | `pages/leaderboard.tsx` | Daily (by score) and all-time (by rating) leaderboards |
+| `Profile` | `pages/profile.tsx` | Stats, detection rating, streaks, humanity trend, display-name rename |
+| `Auth` | `pages/auth.tsx` | Guest login, email/password login/register |
+| `Settings` | `pages/settings.tsx` | AI provider selection, dark-mode toggle, sound toggle |
+| `NotFound` | `pages/not-found.tsx` | Unmatched-route fallback (React Router v6 drops the whole layout branch otherwise) |
 
 ### Route Map
 
 ```
 /                 → Home
-/session          → Session (active session)
-/session/:id      → Session (view past session)
+/session          → Session (active session; auto-starts on mount)
 /challenge        → Challenge (standalone practice view)
 /leaderboard      → Leaderboard
 /profile          → Profile
 /auth             → Auth
 /settings         → Settings
+/s/{session_id}   → shared result (GET /share/s/{id})
+*                 → NotFound
 ```
+
+All routes except `/` and `/auth` are gated by `RequireAuth` (a
+`useAuthContext` guard that renders a loading hint, then redirects to
+`/auth`).
+
+> Page files are lowercase (`pages/home.tsx`), matching the repo's existing
+> convention for route components.
+
+---
+
+### Release mode: serving the built frontend
+
+The production build is served by FastAPI itself, so a release runs on one
+port with no Docker and no separate web server (Sprint 27):
+
+```bash
+bash frontend/scripts/build.sh   # vite build → frontend/dist
+bash backend/scripts/run.sh     # uvicorn on http://127.0.0.1:8000
+```
+
+- `GET /` and any non-reserved browser path return `index.html`, so client-side routes (`/profile`, `/session`) work on a hard refresh.
+- Build files are served from `frontend/dist`; a missing `/assets/*` bundle returns 404 rather than silently returning the shell.
+- The `api`, `ws`, `docs`, `redoc`, `openapi.json`, and `health` prefixes are never claimed by the fallback, so a typo'd API path returns a JSON 404 instead of HTML.
+- `FRONTEND_DIST_DIR` is resolved per request — no import-time snapshot — so a rebuild is picked up without a restart.
+- With no build present (dev mode) nothing is mounted and `/` is a plain 404; the API is untouched.
+- `frontend/.env.production` sets `VITE_API_BASE_URL=/api/v1` so the built UI is same-origin with the backend (no CORS, one port). In dev the default in `src/api/client.ts` points at `http://127.0.0.1:8000/api/v1`, and `toWebSocketUrl` resolves a relative base against `window.location` for release while absolute dev bases keep the configured origin.
 
 ---
 
@@ -1183,8 +1229,10 @@ type WSEvent =
 | `ChallengeView` | Prompt display, constraints rendering, time limit |
 | `SessionSummary` | End-of-session stats, share button |
 | `ResultCard` | Shareable image/text summary |
+| `ShareButton` | Fetches a result, offers Copy / Download / link |
 | `LeaderboardTable` | Sortable table with rank, name, score/rating |
 | `HumanityMeter` | 0-100 bar showing how human-like an entry appears |
+| `ThemeProvider` | Applies the persisted theme as the `dark` class on `<html>` |
 
 ### 9.2 Component Props (Key Examples)
 
@@ -1349,42 +1397,72 @@ The `humanity_guidance` list is appended to the system prompt as additional inst
 
 ## 12. Testing Strategy
 
+Final state: **277 backend tests** (`pytest`) and **157 frontend tests**
+(`vitest`), all green, plus `ruff`, `mypy`, `tsc`, `eslint`, and `prettier`
+clean. CI (`.github/workflows/ci.yml`) runs the same checks on every push.
+
 ### 12.1 Backend Tests (pytest + pytest-asyncio)
 
 | Test Module | Focus |
 |-------------|-------|
+| `test_health.py` | `GET /health` |
+| `test_auth.py` | JWT issue/decode/expiry, PBKDF2 hashing, state store, auth endpoints |
+| `test_db.py` | Schema + indexes, Alembic upgrade and idempotency, app startup init |
+| `test_challenge_library.py` | Executable acceptance criteria for the JSON library: schema, 25 ids vs doc 05, stub pools, prompt template |
 | `test_challenge_engine.py` | Constraint validation (hard/soft), time limit calc, daily rotation determinism |
 | `test_ai_service.py` | Prompt construction, provider selection, fallback to StubProvider, sanitization, audit recording |
 | `test_ai_providers.py` | Provider ABC contract, per-provider payloads/error mapping (MockTransport), chain build + selection fall-through |
-| `test_api_voting.py` | `POST /voting/submit-entry`: both entries returned, soft/hard violation handling, auth, 404/400/503 mapping, audit row |
 | `test_content_filter.py` | Meta-mention detection, injection pattern matching, response length limits |
-| `test_voting.py` | A/B assignment stability per round + spread across rounds, vote recording, reveal attribution, humanity persistence, double-reveal rejection |
+| `test_api_challenges.py` | Daily/definition/validate endpoints |
+| `test_api_voting.py` | `POST /voting/submit-entry`: both entries returned, soft/hard violation handling, auth, 404/400/503 mapping, audit row |
 | `test_session.py` | State machine transitions (valid + rejected), session start pools, entry submission (validation, persistence, A/B presentation), vote→reveal→score→rating→streaks, round/session completion, summary accuracy, full HTTP game loop with StubProvider, ownership enforcement |
+| `test_voting.py` | A/B assignment stability per round + spread across rounds, vote recording, reveal attribution, humanity persistence, double-reveal rejection |
 | `test_scoring.py` | Round score formula (§12.5), ELO rating both ways + K-factor + floor, humanity from votes, streaks (correct/daily/gap), daily + all-time leaderboards, snapshot idempotency, leaderboard endpoints |
-| `test_session.py` | State machine transitions, round lifecycle, session summary |
-| `test_websocket.py` | Connect/auth (rejection paths), SESSION_STARTED + ROUND_START handshake, SUBMIT_ENTRY → AI_RESPONSE_READY, full round flow (VOTE_CONFIRMED → REVEAL → ROUND_SCORED → ROUND_START), SESSION_END after 3 rounds + rejoin, PING/PONG, pub/sub to two sockets, manager dead-socket cleanup |
 | `test_prompt_audit.py` | Prompt versioning, audit recording, reproducibility |
-| `test_e2e.py` | Full flow with StubProvider: challenge → entry → AI → vote → reveal → score |
+| `test_repositories.py` | Repository CRUD/query contracts over SQLite |
+| `test_profile.py` | `GET/PUT /profile`, service aggregation, endpoint auth/404s |
+| `test_share.py` | Share text format, PNG validity, link, endpoint auth/ownership/unfinished, replay |
+| `test_challenge_data.py` | Library load into the DB (25 rows, idempotent, JSON parity), `challenge_daily` one-per-date, 25-day cycle covers all 25, `/challenges/daily` + `/{id}` |
+| `test_websocket.py` | Connect/auth (rejection paths), SESSION_STARTED + ROUND_START handshake, SUBMIT_ENTRY → AI_RESPONSE_READY, full round flow (VOTE_CONFIRMED → REVEAL → ROUND_SCORED → ROUND_START), SESSION_END after 3 rounds + rejoin, PING/PONG, pub/sub to two sockets, manager dead-socket cleanup |
+| `test_release.py` | Static hosting: SPA fallback, asset serving + 404s, API never shadowed, dev mode |
+| `test_e2e.py` | Full §12.4 flow (all 13 steps) with StubProvider, no API keys |
+
+`tests/conftest.py` holds the shared throwaway-DB / StubProvider `client`
+fixture and the fixture loaders. Files that define their own `client`
+fixture shadow it.
 
 ### 12.2 Frontend Tests (Vitest)
 
 | Test Module | Focus |
 |-------------|-------|
-| `app.test.tsx` | All 7 routes render, nav navigation + active-route state, 404 fallback, home CTA, auth form controls (Sprint 15) |
-| `Timer.test.tsx` | Countdown, urgency states, auto-submit at 0 |
-| `EntryInput.test.tsx` | Text input, word/char counting, validation feedback |
-| `VotingScreen.test.tsx` | A/B display, vote button behavior, no peeking |
-| `RevealScreen.test.tsx` | Correct reveal, humanity display, explanation text |
-| `ScoreAnimation.test.tsx` | Score display, animation timing |
+| `app.test.tsx` | All routes render, nav navigation + active-route state, 404 fallback, home CTA, auth form, nav streak badge |
+| `api/client.test.ts` | Per-module URL/payload/return assertions, JWT interceptor, 401 token eviction, error mapping |
+| `lib/constraints.test.ts` | Client-side constraint mirror (hard/soft) |
+| `hooks/useChallenges.test.ts` | Daily lookup, definitions, validation |
+| `hooks/useTimer.test.ts` | Countdown, urgency states, expiry callback |
+| `hooks/useSettings.test.tsx` | Defaults, per-setting persistence, restore-on-mount, corrupt-JSON fallback, shared state |
+| `hooks/useShare.test.ts` | Share request, error surfacing, clipboard copy, PNG download |
+| `websocket/client.test.ts` | Event dispatch, `toWebSocketUrl` (absolute + relative bases) |
+| `websocket/hooks.test.tsx` | Round-state derivation, session lifecycle |
+| `contexts/AuthContext.test.tsx` | Auto guest login, token restore, auth actions |
+| `contexts/VotingContext.test.tsx` | Entries/vote/reveal state |
+| `contexts/SessionContext.test.tsx` | Round state machine, optimistic writing, score dwell guard, auto-submit |
+| `contexts/SessionClock.test.tsx` | Round clock, expiry, guard outside the provider |
+| `components/*` | ChallengeView, EntryInput, Timer, VotingScreen, RevealScreen, ScoreAnimation, SessionSummary, HumanityMeter, LeaderboardTable, ThemeProvider, ShareButton, ResultCard, Badges |
+
+Vitest runs with `fileParallelism: false` (test files share the module-level
+API client) and a jsdom URL of `http://localhost:5173` so XHR/origin matches
+the dev server.
 
 ### 12.3 Test Fixtures
 
-| File | Purpose |
+| Path | Purpose |
 |------|---------|
-| `backend/tests/fixtures/challenges/` | 5 sample challenge definitions in JSON |
-| `backend/tests/fixtures/stub_entries/` | Pre-written entries for StubProvider per challenge |
-| `backend/tests/fixtures/ai_prompts/` | Prompt template v1.0 |
-| `frontend/tests/fixtures/` | Mock WebSocket events, sample entries, session summaries |
+| `backend/tests/fixtures/challenges/` | 3 sample challenge definitions (the practice set the E2E flow uses) |
+| `backend/tests/fixtures/ai_responses/` | Sample clean responses + the forbidden patterns and length cap delivered entries are checked against |
+| `backend/app/data/challenge_library/` | The 25 production challenge definitions (source of truth) |
+| `backend/app/data/stub_entries/` | One 10-entry pool per challenge for StubProvider |
+| `backend/app/data/ai_prompts/` | Prompt template v1.0 |
 
 ### 12.4 E2E Test Flow
 

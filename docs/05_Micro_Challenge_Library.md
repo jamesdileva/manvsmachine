@@ -1,7 +1,7 @@
 # Man vs. Machine — Micro Challenge Library
 
-> **Version:** 1.0
-> **Status:** Draft — Pre-MVP
+> **Version:** 1.27
+> **Status:** Final — all 25 challenges shipped in the library
 > **Audience:** Game designers, developers, content creators
 > **Related:** See `docs/01_Master_Architecture.md` §12 (Challenge Engine) and `docs/04_Game_Design_Document.md` §3 (Challenge System).
 
@@ -70,6 +70,45 @@ Each entry in this library follows this structure:
 ---
 
 ## 3. The Library: 25 Challenges
+
+Each entry below maps one-to-one to a JSON definition in
+`backend/app/data/challenge_library/`. The id is `challenge_<slug>_NN`, where
+`NN` is the number in the heading — entry 01 is `challenge_slogan_01.json`:
+
+| # | Challenge | Challenge id |
+|---|-----------|--------------|
+| 01 | Tiny Tagline | `challenge_slogan_01` |
+| 02 | Impossible Product | `challenge_impossible_02` |
+| 03 | Emoji Story | `challenge_emoji_03` |
+| 04 | Worst Idea | `challenge_worstidea_04` |
+| 05 | Fill in the Blank | `challenge_blank_05` |
+| 06 | Comeback Challenge | `challenge_comeback_06` |
+| 07 | Review | `challenge_review_07` |
+| 08 | Headline | `challenge_headline_08` |
+| 09 | Tweet | `challenge_tweet_09` |
+| 10 | Movie Title | `challenge_movie_10` |
+| 11 | Captcha Caption | `challenge_caption_11` |
+| 12 | Product Name | `challenge_product_12` |
+| 13 | One-Liner | `challenge_oneliner_13` |
+| 14 | Marketing Challenge | `challenge_marketing_14` |
+| 15 | Analogy | `challenge_analogy_15` |
+| 16 | Choose Best Move | `challenge_bestmove_16` |
+| 17 | Guess Popularity | `challenge_popularity_17` |
+| 18 | Bluff: Two Truths | `challenge_twotruths_18` |
+| 19 | Bluff: Confession | `challenge_confession_19` |
+| 20 | Bluff: Yelp Review | `challenge_yelp_20` |
+| 21 | Bluff: DM to an Ex | `challenge_dm_21` |
+| 22 | Bluff: Reddit Comment | `challenge_reddit_22` |
+| 23 | Bluff: Job Interview | `challenge_interview_23` |
+| 24 | Creative Choice: Rank Things | `challenge_rank_24` |
+| 25 | Creative Choice: Logo Description | `challenge_logo_25` |
+
+Each id also has a 10-entry StubProvider pool at
+`backend/app/data/stub_entries/<challenge_id>.json`, so the game is fully
+playable with no AI API keys. `backend/scripts/load_challenges.py` loads all 25
+into the database (the app's startup does the same sync), and
+`backend/tests/test_challenge_library.py` validates the JSON against the §10.1
+schema.
 
 ---
 
