@@ -62,6 +62,27 @@ UI at the same origin (`/api/v1`), so no CORS or second port is involved.
 
 No AI API keys are required: without keys the game runs on the built-in StubProvider. To use real models, set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in `backend/.env`. Other settings: `DATABASE_URL`, `JWT_SECRET_KEY`, `STUB_PROVIDER_ONLY=true`, `OLLAMA_ENABLED`/`OLLAMA_MODEL` (local LLM).
 
+## Play it
+
+| Way | Command | Then open |
+|-----|---------|-----------|
+| Dev (hot reload) | `.venv/Scripts/python scripts/dev.py` | http://localhost:5173 |
+| One port (release) | `bash frontend/scripts/build.sh && bash backend/scripts/run.sh` | http://127.0.0.1:8000 |
+| **Double-click bundle** | `python scripts/build_executable.py` | run `dist/ManVsMachine/ManVsMachine.exe` |
+
+The bundle is ~38 MB and needs **no Python and no Node** on the target machine —
+the database, the 25-challenge library, the migrations, and the built UI are all
+inside it. Zip the `dist/ManVsMachine` folder and hand it to anyone. Your save
+data is written next to the executable, so it survives restarts and upgrades.
+
+```bash
+# build the bundle (uses the existing frontend build)
+python scripts/build_executable.py
+
+# ...or rebuild the frontend first
+python scripts/build_executable.py --rebuild-ui
+```
+
 ## Tests
 
 ```bash

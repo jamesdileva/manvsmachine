@@ -79,6 +79,18 @@ npx eslint src/
 npx prettier --check "src/**/*.{ts,tsx}"
 ```
 
+## Package as a double-click bundle
+
+```bash
+python scripts/build_executable.py                 # uses the existing frontend build
+python scripts/build_executable.py --rebuild-ui    # rebuild the frontend first
+```
+
+→ `dist/ManVsMachine/` (~38 MB). Run `ManVsMachine.exe` (Windows) or
+`ManVsMachine` (Linux/macOS) — no Python or Node needed. Zip and share.
+PyInstaller is a **build-time-only** dependency (`pip install -e "backend[package]"`);
+the game itself still runs on plain FastAPI + SQLite + the Vite build.
+
 ## Database (SQLite)
 
 - **File:** `backend/manvsmachine.db` (gitignored; auto-created/migrated on backend startup)

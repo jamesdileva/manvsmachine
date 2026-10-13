@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -82,6 +83,17 @@ async def health_check() -> dict[str, str]:
 _RESERVED_PREFIXES = ("api", "ws", "docs", "redoc", "openapi.json", "health")
 
 
+def _frontend_dist() -> Path:
+    """Where the built UI lives, resolved per request.
+
+    `MANVSMACHINE_FRONTEND_DIST` overrides the repo-relative default — the
+    PyInstaller bundle sets it, because a frozen `__file__` points into the
+    unpacked distribution rather than back at the repo.
+    """
+    override = os.environ.get("MANVSMACHINE_FRONTEND_DIST")
+    return Path(override) if override else FRONTEND_DIST_DIR
+
+
 @app.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa(full_path: str) -> FileResponse:
     """Serve a build file, or index.html for client-side routes.
@@ -90,21 +102,19 @@ async def serve_spa(full_path: str) -> FileResponse:
     API, so a typo'd API path returns a JSON 404 instead of the shell. Without a
     build (dev mode) this is a plain 404 and the API is untouched.
     """
-    if FRONTEND_DIST_DIR.name == "dist" and not FRONTEND_DIST_DIR.is_dir():
-        raise HTTPException(status_code=404, detail="frontend build not found")
-
+    dist = _frontend_dist()
     first = full_path.split("/", 1)[0] if full_path else ""
     if first in _RESERVED_PREFIXES:
         raise HTTPException(status_code=404, detail="not found")
 
-    candidate = FRONTEND_DIST_DIR / full_path
+    candidate = dist / full_path
     if candidate.is_file():
         return FileResponse(candidate)
     if first == "assets":
         # A missing bundle is a broken build, not a client-side route.
         raise HTTPException(status_code=404, detail="asset not found")
 
-    index = FRONTEND_DIST_DIR / "index.html"
+    index = dist / "index.html"
     if not index.is_file():
         raise HTTPException(status_code=404, detail="frontend build not found")
     return FileResponse(index)

@@ -25,6 +25,11 @@ dev = [
     "ruff>=0.3",
     "mypy>=1.8",
 ]
+# Build-time only: freezes the app into a double-click bundle (see Master §8,
+# owner-approved). Not a runtime dependency of the game itself.
+package = [
+    "pyinstaller>=6.11",
+]
 
 [build-system]
 requires = ["setuptools>=68"]

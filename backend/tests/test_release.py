@@ -114,6 +114,34 @@ def test_docs_and_health_still_work(built_frontend: TestClient) -> None:
 
 
 # ---------------------------------------------------------------------------
+# The bundled-dist override (PyInstaller)
+
+
+def test_env_override_points_at_another_directory(
+    built_frontend: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A frozen build sets MANVSMACHINE_FRONTEND_DIST to its bundled UI."""
+    bundled = tmp_path / "bundled"
+    bundled.mkdir()
+    (bundled / "index.html").write_text("<html>bundled</html>", encoding="utf-8")
+    monkeypatch.setenv("MANVSMACHINE_FRONTEND_DIST", str(bundled))
+
+    # The env var takes precedence over the repo-relative default.
+    assert main_module._frontend_dist() == bundled
+
+    response = built_frontend.get("/")
+    assert response.status_code == 200
+    assert "bundled" in response.text
+
+
+def test_no_override_uses_the_repo_relative_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("MANVSMACHINE_FRONTEND_DIST", raising=False)
+    assert main_module._frontend_dist() == FRONTEND_DIST_DIR
+
+
+# ---------------------------------------------------------------------------
 # Dev mode: no build output
 
 

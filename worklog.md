@@ -18,6 +18,14 @@ Entry template:
 
 ---
 
+## [2026-10-10] Post-MVP — PyInstaller double-click bundle (owner-approved)
+- Status: done
+- Plan & scope: owner asked for option B (single executable, double-click and play) from the Sprint 28 packaging write-up. PyInstaller added to Master §8 as an owner-approved build-time-only tool (same path Ollama took in Sprint 9). Files created: `packaging/launcher.py`, `packaging/manvsmachine.spec`, `scripts/build_executable.py`, `backend/tests/test_launcher.py`. Modified: `backend/app/main.py` (`MANVSMACHINE_FRONTEND_DIST` override), `backend/pyproject.toml` (`package` extra), `backend/tests/test_release.py`, `.gitignore`, README, quick-reference, docs/01 §8 + §22.
+- Implemented: `scripts/build_executable.py` builds the frontend if stale/missing, then runs PyInstaller → `dist/ManVsMachine/` (~40 MB). The spec collects `alembic.ini` + `alembic/`, `app/data/` (25 challenge JSONs + 25 stub pools + prompt template), and `frontend/dist`, with hidden imports for uvicorn's lazily-loaded websocket protocols. The launcher boots uvicorn, points the static dir at the bundled UI, writes SQLite next to the executable (not the per-run temp unpack dir), and opens the browser.
+- Verification: 8/8 launcher unit tests (path resolution for one-dir/one-file layouts, override precedence, DB placement); release suite 13/13; full backend suite **279 passed**; ruff/mypy clean. Live-verified on the real frozen build with no Python on PATH: `/` 200 HTML, `/profile` 200 fallback, `/api/v1/nope` 404 JSON, `/health` 200, full 3-round WebSocket game to SESSION_END, share card (2712-byte valid PNG), 3-round replay.
+- Notes: `SPECPATH` is the spec's *directory*, not the file — the first build failed on that. The frozen `frontend/dist` lands at `_internal/frontend/dist` in the one-dir layout, which the first launcher draft didn't check (caught live: `/` 404'd on the fresh build). The `ERROR` mid-stream in the verification run is the test script's own double-submit (SESSION_STARTED + ROUND_START handlers both fire), not a bundle bug — all 3 rounds scored. PyInstaller is build-time-only, so it is not a native-app wrapper and does not violate AGENTS.md's Tauri/Electron prohibition; AGENTS.md's own rules were followed (owner approval recorded in §22 v1.24).
+
+---
 ## [2026-10-10] Sprint 28 — Documentation Finalization & Project Wrap-up
 - Status: done
 - Plan & scope: docs/03_Sprint_Plan.md Sprint 28 — no code changes. Files modified: all five docs + AGENTS.md (final version/status, changelog entries, accurate cross-references).

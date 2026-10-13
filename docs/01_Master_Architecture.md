@@ -360,6 +360,19 @@ The MVP is complete when a user can:
 | Vitest | 1.2+ | Frontend testing |
 | html2canvas | 1.4+ | Result card image generation (client-side) — *not installed; the MVP card is rasterised server-side with stdlib `zlib`/`struct` (Sprint 25)* |
 
+### Build / Packaging
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| PyInstaller | 6.11+ | Freezing the app into a double-click desktop bundle |
+
+**PyInstaller is an owner-approved addition** (see §22 changelog v1.24). It is a
+build-time-only tool, not a runtime dependency of the game: the app itself still
+runs on plain FastAPI + SQLite + the Vite build output, exactly as it does in
+dev and release mode. The spec lives at `packaging/manvsmachine.spec`, the entry
+point at `packaging/launcher.py`, and `scripts/build_executable.py` orchestrates
+the build.
+
 ### Infrastructure
 
 | Technology | Purpose |
@@ -1298,7 +1311,8 @@ SESSION_END (summary) → leaderboard + profile → share result + replay link.
 | 1.20 | 2026-10-10 | Sprint 25 implemented per spec. ShareService (`generate_share_text` in the documented format, `create_share_link`, `generate_share_image`), `POST /api/v1/share/result` (text + link + base64 PNG; 400 unfinished, 404 foreign, 401 unauth) and `GET /api/v1/share/s/{id}` (resolves a shared link to the result text + attributed rounds). Frontend `useShare` (post/copy/download), `ShareButton` (Copy + Download + link dialog), `ResultCard` (score, accuracy, averaged humanity meters) wired onto the Session page. **Doc conflict resolved**: the sprint plan said "PNG via PIL", but §8 sanctions `html2canvas` for result-card images and does not list Pillow (also not installed) — the server-side card is rasterised with the standard library only (`zlib` + `struct` + a compact 5x7 bitmap font), so the documented backend contract holds with no new native dependency. Shared links are unobfuscated session ids and auth-gated; a `shares` table is post-MVP. |
 | 1.21 | 2026-10-10 | Sprint 26 implemented per spec. `app/scripts/challenge_data.py` is the single load path (`library_ids`, `read_definitions`, `load_challenge_library`) shared by the data migration, the standalone script, and the app's startup `sync_library_to_db`, so all three agree on what "loaded" means. Alembic `003_load_challenges` inserts the 25 definitions idempotently (the plan named 002, which the password_hash migration already owned). `scripts/load_challenges.py` sits at the repo-root script dir where `dev.py` already lives (the plan said `backend/scripts/`). `tests/test_challenge_data.py` covers the acceptance criteria incl. 25 consecutive days covering all 25 challenges exactly once. Migration 003 pre-populates `challenges`, which broke the hand-seeded fixtures in `test_share.py`/`test_profile.py` (PK collision) — both now check for an existing row first. |
 | 1.22 | 2026-10-10 | Sprint 27 implemented per spec (**final build sprint — MVP complete**). Single-port release mode: `main.py` serves the built frontend on the API port, with `/` and any non-reserved browser path returning index.html (SPA fallback), build files served from `frontend/dist`, a missing `/assets/*` bundle 404ing rather than silently returning the shell, and the `api`/`ws`/`docs`/`redoc`/`openapi.json`/`health` prefixes never claimed so a typo'd API path returns a JSON 404. `FRONTEND_DIST_DIR` is resolved per request (no import-time snapshot). The health check moved `/` → `/health` so `/` can serve the app. Frontend: `.env.production` sets `VITE_API_BASE_URL=/api/v1` (same-origin release) and `toWebSocketUrl` resolves a relative base against `window.location`, picking ws/wss from the page protocol. Added `.github/workflows/ci.yml` (ruff, mypy, pytest + tsc, eslint, prettier, vitest, build), `backend/scripts/run.sh`, `frontend/scripts/build.sh`. Docker/Nginx production deployment remains post-MVP. |
-| 1.23 | 2026-10-10 | Sprint 28 (documentation finalization) — all five docs + AGENTS.md updated to final status/version: Master §22 changelog extended through the MVP, Implementation Guide refreshed (share/replay endpoints, static release serving, frontend env handling, hooks/components/pages/test tables, camelCase WS payload correction), README rewritten for the finished MVP. No code changes. Final state: 277 backend + 157 frontend tests green; ruff/mypy/tsc/eslint/prettier clean. |
+| 1.23 | 2026-10-10 | Sprint 28 (documentation finalization) — all five docs + AGENTS.md updated to final status/version: Master §22 changelog extended through the MVP, Implementation Guide refreshed (release-mode section, camelCase WS payload correction, final test inventory), README rewritten. No code changes. Final state: 277 backend + 157 frontend tests green; ruff/mypy/tsc/eslint/prettier clean. |
+| 1.24 | 2026-10-10 | **Owner-approved addition: PyInstaller desktop bundling.** §8 gains a Build/Packaging row for PyInstaller 6.11+ as a build-time-only tool (not a runtime dependency — the app still runs on plain FastAPI + SQLite + the Vite output). Adds `packaging/launcher.py` (frozen entry point: boots uvicorn, points `MANVSMACHINE_FRONTEND_DIST` at the bundled UI, keeps SQLite beside the executable instead of the temp unpack dir, opens the browser), `packaging/manvsmachine.spec` (collects alembic + migrations, `app/data` challenge library and stub pools, and `frontend/dist`; hidden imports for uvicorn's lazily-loaded websocket protocols), and `scripts/build_executable.py`. `main.py` gained `MANVSMACHINE_FRONTEND_DIST` so a frozen `__file__` (which resolves outside the repo) can still find the bundled frontend. Result: a ~38 MB double-click bundle verified end-to-end — UI, API, WebSocket game (3 rounds), share card, and replay all work with **no Python and no Node on the machine**. |
 
 ---
 
